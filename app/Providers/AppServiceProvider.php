@@ -11,7 +11,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $postgres = config('database.connections.pgsql');
+
+        config([
+            'database.default' => 'pgsql',
+            'database.connections' => ['pgsql' => $postgres],
+        ]);
     }
 
     /**

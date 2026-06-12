@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\MobileDocument;
 use App\Models\Order;
 use App\Models\OrderStatusHistory;
 use Illuminate\Http\Request;
@@ -55,6 +56,7 @@ class OrderController extends Controller
         try {
             DB::beginTransaction();
             $order->update(['status' => $validated['status']]);
+            $this->syncMobileOrderStatus($order);
 
             OrderStatusHistory::create([
                 'order_id' => $order->id,
@@ -72,6 +74,20 @@ class OrderController extends Controller
 
             return back()->with('error', 'Failed to update order status.');
         }
+    }
+
+    private function syncMobileOrderStatus(Order $order): void
+    {
+        $document = $order->source_document_path
+            ? MobileDocument::where('path', $order->source_document_path)->first()
+            : MobileDocument::where('data->orderNumber', $order->order_number)->first();
+        if (! $document) {
+            return;
+        }
+
+        $data = $document->data;
+        $data['orderStatus'] = $order->status;
+        $document->update(['data' => $data]);
     }
 
     public function destroy(Order $order)

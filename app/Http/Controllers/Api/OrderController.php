@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\InventoryTransaction;
+use App\Models\MobileDocument;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
@@ -147,6 +148,14 @@ class OrderController extends Controller
         }
 
         $order->update(['status' => $request->status]);
+        $document = $order->source_document_path
+            ? MobileDocument::where('path', $order->source_document_path)->first()
+            : MobileDocument::where('data->orderNumber', $order->order_number)->first();
+        if ($document) {
+            $data = $document->data;
+            $data['orderStatus'] = $order->status;
+            $document->update(['data' => $data]);
+        }
 
         return response()->json(['success' => true, 'data' => $order]);
     }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\Actions\Logout;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Layout;
@@ -13,13 +14,22 @@ new #[Layout('layouts.guest')] class extends Component
      */
     public function sendVerification(): void
     {
-        if (Auth::user()->hasVerifiedEmail()) {
+        /** @var User|null $user */
+        $user = Auth::user();
+
+        if ($user === null) {
+            $this->redirectRoute('login', navigate: true);
+
+            return;
+        }
+
+        if ($user->hasVerifiedEmail()) {
             $this->redirectIntended(default: route('dashboard', absolute: false), navigate: true);
 
             return;
         }
 
-        Auth::user()->sendEmailVerificationNotification();
+        $user->sendEmailVerificationNotification();
 
         Session::flash('status', 'verification-link-sent');
     }
