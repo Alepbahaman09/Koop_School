@@ -333,7 +333,7 @@ class MobileDocumentController extends Controller
     {
         return ['id' => (string) $product->id, 'path' => "items/{$product->id}", 'data' => [
             'id' => $product->id, 'name' => $product->name, 'description' => $product->description,
-            'price' => (float) $product->price, 'stock' => $product->stock_quantity, 'image_url' => $product->image,
+            'price' => (float) $product->price, 'stock' => $product->stock_quantity, 'image_url' => $product->image_url,
             'category' => $product->category?->name,
         ]];
     }

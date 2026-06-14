@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
@@ -34,9 +35,12 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('transactions', [TransactionController::class, 'index'])->name('transactions.index');
 });
 
-Route::view('analytics', 'analytics')
+Route::get('analytics', [AnalyticsController::class, 'index'])
     ->middleware(['auth', 'verified', 'admin'])
     ->name('analytics');
+Route::get('analytics/export', [AnalyticsController::class, 'export'])
+    ->middleware(['auth', 'verified', 'admin'])
+    ->name('analytics.export');
 
 Route::view('finance', 'finance')
     ->middleware(['auth', 'verified', 'admin'])

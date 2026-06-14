@@ -120,6 +120,13 @@
                             <span class="text-slate-900">@yield('page-title', 'Dashboard')</span>
                         </div>
 
+                        <form method="GET" action="{{ route('products.index') }}" class="mx-auto hidden w-full max-w-sm md:block">
+                            <label class="relative block">
+                                <svg class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21 21-4.3-4.3M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z" /></svg>
+                                <input name="search" value="{{ request()->routeIs('products.*') ? request('search') : '' }}" placeholder="Search items, categories, or more..." class="h-10 w-full rounded-lg border-0 bg-slate-50 pl-10 pr-4 text-xs font-semibold text-slate-600 ring-1 ring-slate-100 placeholder:text-slate-400">
+                            </label>
+                        </form>
+
                         <div class="ml-auto flex flex-1 items-center justify-end gap-3">
                             <button class="grid h-10 w-10 place-items-center rounded-lg text-slate-500 hover:bg-slate-100" title="Notifications">
                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -138,5 +145,6 @@
                 </div>
             </main>
         </div>
+        @stack('scripts')
     </body>
 </html>

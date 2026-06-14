@@ -23,8 +23,20 @@
 <label class="text-xs font-extrabold uppercase text-slate-400 sm:col-span-2">Description
     <textarea name="description" rows="3" class="mt-1 w-full rounded-lg border-slate-200 text-sm">{{ old('description', $product?->description) }}</textarea>
 </label>
-<label class="text-xs font-extrabold uppercase text-slate-400">Image
-    <input name="image" type="file" accept="image/*" class="mt-1 block w-full text-sm text-slate-500">
+<label class="text-xs font-extrabold uppercase text-slate-400 sm:col-span-2">Product Image
+    <div class="mt-2 flex items-center gap-4 rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3">
+        <div class="h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-white ring-1 ring-slate-200">
+            @if ($product?->image_url)
+                <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="h-full w-full object-cover" onerror="this.parentElement.innerHTML='<div class=&quot;grid h-full place-items-center px-2 text-center text-[10px] font-extrabold text-slate-400&quot;>IMAGE NOT FOUND</div>'">
+            @else
+                <div class="grid h-full place-items-center px-2 text-center text-[10px] font-extrabold text-slate-400">IMAGE PREVIEW</div>
+            @endif
+        </div>
+        <div class="min-w-0">
+            <input name="image" type="file" accept="image/*" class="block w-full text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-xs file:font-extrabold file:text-indigo-700">
+            <p class="mt-2 text-xs normal-case font-semibold text-slate-400">JPG, PNG, GIF or WebP up to 2 MB. Leave empty to keep the current image.</p>
+        </div>
+    </div>
 </label>
 <label class="flex items-center gap-2 self-end pb-2 text-sm font-extrabold text-slate-700">
     <input name="is_active" value="1" type="checkbox" @checked(old('is_active', $product?->is_active ?? true)) class="rounded border-slate-300 text-indigo-600"> Available in mobile app

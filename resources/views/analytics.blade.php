@@ -5,208 +5,149 @@
 
 @section('content')
 <section class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-    <h1 class="text-xl font-extrabold tracking-normal">Analytics</h1>
+    <div>
+        <h1 class="text-xl font-extrabold text-slate-950">Analytics</h1>
+        <p class="mt-1 text-xs font-semibold text-slate-400">{{ $start->format('d M Y') }} - {{ $end->format('d M Y') }}</p>
+    </div>
     <div class="flex gap-2">
-        <button class="h-10 rounded-lg bg-white px-4 text-sm font-bold text-slate-600 ring-1 ring-slate-200">Last 30 days</button>
-        <button class="h-10 rounded-lg bg-indigo-600 px-4 text-sm font-extrabold text-white shadow-sm shadow-indigo-100">Export Report</button>
+        <form method="GET">
+            <select name="days" onchange="this.form.submit()" class="h-10 rounded-lg border-0 bg-white px-4 text-sm font-bold text-slate-500 shadow-sm ring-1 ring-slate-100">
+                @foreach ([7 => 'Last 7 days', 30 => 'Last 30 days', 90 => 'Last 90 days', 365 => 'Last year'] as $value => $label)
+                    <option value="{{ $value }}" @selected($days === $value)>{{ $label }}</option>
+                @endforeach
+            </select>
+        </form>
+        <a href="{{ route('analytics.export', ['days' => $days]) }}" class="inline-flex h-10 items-center rounded-lg bg-white px-4 text-sm font-extrabold text-slate-700 shadow-sm ring-1 ring-slate-100 hover:text-indigo-600">Export Report</a>
     </div>
 </section>
 
 <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-    <article class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <div class="mb-4 flex items-start justify-between">
-            <p class="text-sm font-semibold text-slate-500">Conversion Rate</p>
-            <div class="grid h-10 w-10 place-items-center rounded-lg bg-indigo-50">
-                <svg class="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+    @php
+        $metricIcons = [
+            'indigo' => ['bg-indigo-50 text-indigo-600', 'M4 19V5m5 14V9m5 10V3m5 16v-7'],
+            'sky' => ['bg-sky-50 text-sky-600', 'M6 6h15l-1.5 9h-12L6 6Zm0 0L5 3H2m7 18h.01m9 0h.01'],
+            'amber' => ['bg-amber-50 text-amber-600', 'M12 3v18m5-14H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H7'],
+            'emerald' => ['bg-emerald-50 text-emerald-600', 'M5 12l4 4L19 6'],
+        ];
+    @endphp
+    @foreach ($metrics as $metric)
+        <article class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+            <div class="flex items-start justify-between">
+                <div>
+                    <p class="text-xs font-bold text-slate-400">{{ $metric['label'] }}</p>
+                    <p class="mt-2 text-2xl font-extrabold text-slate-950">{{ $metric['value'] }}</p>
+                </div>
+                <span class="grid h-9 w-9 place-items-center rounded-lg {{ $metricIcons[$metric['tone']][0] }}">
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="{{ $metricIcons[$metric['tone']][1] }}" /></svg>
+                </span>
             </div>
-        </div>
-        <p class="text-3xl font-bold text-slate-900">4.8%</p>
-        <p class="mt-2 text-xs font-semibold text-emerald-600">+0.6% vs last month</p>
-    </article>
-
-    <article class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <div class="mb-4 flex items-start justify-between">
-            <p class="text-sm font-semibold text-slate-500">Avg. Order Value</p>
-            <div class="grid h-10 w-10 place-items-center rounded-lg bg-amber-50">
-                <svg class="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            </div>
-        </div>
-        <p class="text-3xl font-bold text-slate-900">$65.30</p>
-        <p class="mt-2 text-xs font-semibold text-emerald-600">+$4.20 vs last month</p>
-    </article>
-
-    <article class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <div class="mb-4 flex items-start justify-between">
-            <p class="text-sm font-semibold text-slate-500">Sessions</p>
-            <div class="grid h-10 w-10 place-items-center rounded-lg bg-blue-50">
-                <svg class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-            </div>
-        </div>
-        <p class="text-3xl font-bold text-slate-900">48.2K</p>
-        <p class="mt-2 text-xs font-semibold text-emerald-600">+22% this month</p>
-    </article>
-
-    <article class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <div class="mb-4 flex items-start justify-between">
-            <p class="text-sm font-semibold text-slate-500">Bounce Rate</p>
-            <div class="grid h-10 w-10 place-items-center rounded-lg bg-rose-50">
-                <svg class="h-5 w-5 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" /></svg>
-            </div>
-        </div>
-        <p class="text-3xl font-bold text-slate-900">28.4%</p>
-        <p class="mt-2 text-xs font-semibold text-emerald-600">-3.2% improved</p>
-    </article>
+            <p class="mt-2 text-xs font-extrabold {{ $metric['change']['positive'] ? 'text-emerald-500' : 'text-rose-500' }}">
+                {{ $metric['change']['positive'] ? '+' : '' }}{{ number_format($metric['change']['value'], 1) }}% vs previous period
+            </p>
+        </article>
+    @endforeach
 </section>
 
-<section class="grid gap-5 xl:grid-cols-2">
-    <article class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <div class="mb-6 flex items-center justify-between">
+<section class="grid gap-5 xl:grid-cols-[1.15fr_1fr]">
+    <article class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+        <div class="mb-5 flex items-start justify-between">
             <div>
-                <h2 class="text-base font-bold text-slate-900">Monthly Revenue</h2>
-                <p class="text-xs font-medium text-slate-400">January - October 2025</p>
+                <h2 class="text-sm font-extrabold text-slate-950">Revenue & Orders</h2>
+                <p class="mt-1 text-xs font-semibold text-slate-400">Performance for the selected period</p>
             </div>
-            <div class="flex gap-3 text-xs font-semibold">
-                <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm bg-indigo-600"></span> Revenue</span>
-                <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm bg-rose-400"></span> Expenses</span>
-            </div>
-        </div>
-        <div class="relative h-72">
-            <div class="absolute left-0 top-0 flex h-full flex-col justify-between text-xs font-medium text-slate-400">
-                <span>$140K</span>
-                <span>$120K</span>
-                <span>$100K</span>
-                <span>$80K</span>
-                <span>$60K</span>
-                <span>$40K</span>
-                <span>$20K</span>
-                <span>$0K</span>
-            </div>
-            <div class="ml-12 h-full rounded-lg bg-gradient-to-b from-indigo-50/40 to-rose-50/40 p-4">
-                <svg class="h-full w-full" viewBox="0 0 600 240" preserveAspectRatio="none">
-                    <path d="M0 170 L60 155 L120 145 L180 140 L240 130 L300 135 L360 120 L420 125 L480 115 L540 105 L600 95" fill="none" stroke="#8b5cf6" stroke-width="2" />
-                    <path d="M0 200 L60 190 L120 185 L180 180 L240 175 L300 178 L360 172 L420 170 L480 168 L540 165 L600 160" fill="none" stroke="#fb7185" stroke-width="2" />
-                </svg>
-            </div>
-            <div class="mt-2 flex justify-between text-xs font-medium text-slate-400">
-                <span>Jan</span>
-                <span>Feb</span>
-                <span>Mar</span>
-                <span>Apr</span>
-                <span>May</span>
-                <span>Jun</span>
-                <span>Jul</span>
-                <span>Aug</span>
-                <span>Sep</span>
-                <span>Oct</span>
+            <div class="flex gap-3 text-[11px] font-bold text-slate-500">
+                <span class="flex items-center gap-1.5"><i class="h-2 w-2 rounded-sm bg-indigo-500"></i> Revenue</span>
+                <span class="flex items-center gap-1.5"><i class="h-2 w-2 rounded-sm bg-rose-400"></i> Orders</span>
             </div>
         </div>
+        <div class="h-72"><canvas id="revenueChart"></canvas></div>
     </article>
 
-    <article class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <h2 class="mb-6 text-base font-bold text-slate-900">Sales by Category</h2>
-        <div class="flex items-center justify-between">
-            <div class="relative h-56 w-56">
-                <svg viewBox="0 0 100 100" class="h-full w-full -rotate-90">
-                    <circle cx="50" cy="50" r="35" fill="none" stroke="#6366f1" stroke-width="14" stroke-dasharray="70 251" stroke-dashoffset="0"></circle>
-                    <circle cx="50" cy="50" r="35" fill="none" stroke="#3b82f6" stroke-width="14" stroke-dasharray="51 251" stroke-dashoffset="-70"></circle>
-                    <circle cx="50" cy="50" r="35" fill="none" stroke="#f59e0b" stroke-width="14" stroke-dasharray="30 251" stroke-dashoffset="-121"></circle>
-                    <circle cx="50" cy="50" r="35" fill="none" stroke="#10b981" stroke-width="14" stroke-dasharray="52 251" stroke-dashoffset="-151"></circle>
-                    <circle cx="50" cy="50" r="35" fill="none" stroke="#ef4444" stroke-width="14" stroke-dasharray="18 251" stroke-dashoffset="-203"></circle>
-                </svg>
-                <div class="absolute inset-0 flex flex-col items-center justify-center">
-                    <p class="text-3xl font-bold text-slate-900">7.5K</p>
-                    <p class="text-xs font-medium text-slate-400">Total</p>
+    <article class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+        <h2 class="text-sm font-extrabold text-slate-950">Sales by Category</h2>
+        <p class="mt-1 text-xs font-semibold text-slate-400">Non-cancelled order revenue</p>
+        <div class="mt-5 grid items-center gap-5 sm:grid-cols-[1fr_1.1fr]">
+            <div class="relative mx-auto h-52 w-52">
+                <canvas id="categoryChart"></canvas>
+                <div class="pointer-events-none absolute inset-0 grid place-items-center text-center">
+                    <div><p class="text-2xl font-extrabold text-slate-950">RM {{ number_format($categorySales->sum('revenue'), 0) }}</p><p class="text-xs font-bold text-slate-400">Total sales</p></div>
                 </div>
             </div>
             <div class="space-y-3">
-                <div class="flex items-center gap-3">
-                    <span class="h-3 w-3 rounded-sm bg-indigo-600"></span>
-                    <span class="text-sm font-medium text-slate-700">Clothes</span>
-                    <span class="ml-auto text-sm font-bold text-slate-900">3,200</span>
-                </div>
-                <div class="flex items-center gap-3">
-                    <span class="h-3 w-3 rounded-sm bg-blue-500"></span>
-                    <span class="text-sm font-medium text-slate-700">Shoes</span>
-                    <span class="ml-auto text-sm font-bold text-slate-900">1,850</span>
-                </div>
-                <div class="flex items-center gap-3">
-                    <span class="h-3 w-3 rounded-sm bg-amber-500"></span>
-                    <span class="text-sm font-medium text-slate-700">Electronics</span>
-                    <span class="ml-auto text-sm font-bold text-slate-900">1,100</span>
-                </div>
-                <div class="flex items-center gap-3">
-                    <span class="h-3 w-3 rounded-sm bg-emerald-500"></span>
-                    <span class="text-sm font-medium text-slate-700">Accessories</span>
-                    <span class="ml-auto text-sm font-bold text-slate-900">900</span>
-                </div>
-                <div class="flex items-center gap-3">
-                    <span class="h-3 w-3 rounded-sm bg-red-500"></span>
-                    <span class="text-sm font-medium text-slate-700">Sports</span>
-                    <span class="ml-auto text-sm font-bold text-slate-900">450</span>
-                </div>
+                @forelse ($categorySales as $category)
+                    <div class="flex items-center gap-2 text-xs">
+                        <span class="category-key h-2.5 w-2.5 rounded-sm"></span>
+                        <span class="min-w-0 flex-1 truncate font-bold text-slate-600">{{ $category->name }}</span>
+                        <span class="font-extrabold text-slate-950">RM {{ number_format($category->revenue, 0) }}</span>
+                    </div>
+                @empty
+                    <p class="text-sm font-semibold text-slate-400">No category sales yet.</p>
+                @endforelse
             </div>
         </div>
     </article>
 </section>
 
 <section class="grid gap-5 xl:grid-cols-2">
-    <article class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <h2 class="mb-6 text-base font-bold text-slate-900">Traffic Sources</h2>
-        <div class="space-y-5">
-            <div>
-                <div class="mb-2 flex items-center justify-between text-sm">
-                    <span class="font-semibold text-slate-700">Organic Search</span>
-                    <span class="font-bold text-slate-900">42%</span>
+    <article class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+        <h2 class="text-sm font-extrabold text-slate-950">Order Fulfilment</h2>
+        <p class="mt-1 text-xs font-semibold text-slate-400">Distribution by current order status</p>
+        <div class="mt-5 space-y-4">
+            @foreach ($statuses->take(4) as $status)
+                <div>
+                    <div class="mb-1.5 flex justify-between text-xs"><span class="font-bold text-slate-600">{{ $status['label'] }}</span><span class="font-extrabold text-slate-900">{{ number_format($status['percentage'], 0) }}%</span></div>
+                    <div class="h-2 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full {{ $loop->iteration === 1 ? 'bg-indigo-500' : ($loop->iteration === 2 ? 'bg-emerald-400' : ($loop->iteration === 3 ? 'bg-amber-400' : 'bg-sky-400')) }}" style="width: {{ $status['percentage'] }}%"></div></div>
                 </div>
-                <div class="h-2.5 overflow-hidden rounded-full bg-slate-100">
-                    <div class="h-full rounded-full bg-indigo-600" style="width: 42%"></div>
-                </div>
-            </div>
-            <div>
-                <div class="mb-2 flex items-center justify-between text-sm">
-                    <span class="font-semibold text-slate-700">Social Media</span>
-                    <span class="font-bold text-slate-900">28%</span>
-                </div>
-                <div class="h-2.5 overflow-hidden rounded-full bg-slate-100">
-                    <div class="h-full rounded-full bg-emerald-500" style="width: 28%"></div>
-                </div>
-            </div>
-            <div>
-                <div class="mb-2 flex items-center justify-between text-sm">
-                    <span class="font-semibold text-slate-700">Direct</span>
-                    <span class="font-bold text-slate-900">18%</span>
-                </div>
-                <div class="h-2.5 overflow-hidden rounded-full bg-slate-100">
-                    <div class="h-full rounded-full bg-slate-400" style="width: 18%"></div>
-                </div>
-            </div>
+            @endforeach
         </div>
     </article>
 
-    <article class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <h2 class="mb-6 text-base font-bold text-slate-900">Top Selling Products</h2>
-        <div class="space-y-3">
-            <div class="flex items-center justify-between rounded-xl bg-slate-50 p-4">
-                <div class="flex items-center gap-3">
-                    <div class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-indigo-100 text-2xl">👖</div>
-                    <div>
-                        <p class="font-bold text-slate-900">Lc Waikiki Jean Cargo</p>
-                        <p class="text-xs font-medium text-slate-400">1,240 sold</p>
+    <article class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+        <h2 class="text-sm font-extrabold text-slate-950">Top Selling Products</h2>
+        <p class="mt-1 text-xs font-semibold text-slate-400">Best performers in the selected period</p>
+        <div class="mt-3 divide-y divide-slate-100">
+            @forelse ($topProducts->take(4) as $product)
+                <div class="flex items-center gap-3 py-3">
+                    <div class="h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-indigo-100 to-violet-50">
+                        @if ($product->image_url)
+                            <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="h-full w-full object-cover">
+                        @else
+                            <div class="grid h-full place-items-center text-indigo-400"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 5h16v14H4zM8 12l3-3 5 6 2-2 2 2" /></svg></div>
+                        @endif
                     </div>
+                    <div class="min-w-0 flex-1"><p class="truncate text-xs font-extrabold text-slate-800">{{ $product->name }}</p><p class="mt-1 text-[11px] font-semibold text-slate-400">{{ number_format($product->units) }} sold</p></div>
+                    <p class="text-sm font-extrabold text-indigo-600">RM {{ number_format($product->revenue, 0) }}</p>
                 </div>
-                <p class="text-lg font-bold text-indigo-600">$31K</p>
-            </div>
-            <div class="flex items-center justify-between rounded-xl bg-slate-50 p-4">
-                <div class="flex items-center gap-3">
-                    <div class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-emerald-100 text-2xl">👟</div>
-                    <div>
-                        <p class="font-bold text-slate-900">Nike Air Max 2024</p>
-                        <p class="text-xs font-medium text-slate-400">890 sold</p>
-                    </div>
-                </div>
-                <p class="text-lg font-bold text-indigo-600">$80K</p>
-            </div>
+            @empty
+                <p class="py-10 text-center text-sm font-semibold text-slate-400">No product sales yet.</p>
+            @endforelse
         </div>
     </article>
 </section>
 @endsection
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+    const palette = ['#6366f1', '#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#a855f7'];
+    document.querySelectorAll('.category-key').forEach((key, index) => key.style.backgroundColor = palette[index % palette.length]);
+
+    new Chart(document.getElementById('revenueChart'), {
+        type: 'line',
+        data: {
+            labels: @json($salesTrend->pluck('label')),
+            datasets: [
+                { label: 'Revenue', data: @json($salesTrend->pluck('revenue')), borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,.10)', fill: true, tension: .4, pointRadius: 2, borderWidth: 2 },
+                { label: 'Orders', data: @json($salesTrend->pluck('orders')), borderColor: '#fb7185', backgroundColor: 'transparent', tension: .4, pointRadius: 2, borderWidth: 2, yAxisID: 'orders' }
+            ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 10 } }, y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, orders: { beginAtZero: true, position: 'right', grid: { display: false } } } }
+    });
+
+    new Chart(document.getElementById('categoryChart'), {
+        type: 'doughnut',
+        data: { labels: @json($categorySales->pluck('name')), datasets: [{ data: @json($categorySales->pluck('revenue')), backgroundColor: palette, borderWidth: 0 }] },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '68%', plugins: { legend: { display: false } } }
+    });
+</script>
+@endpush
