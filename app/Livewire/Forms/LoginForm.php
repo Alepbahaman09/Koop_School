@@ -28,12 +28,12 @@ class LoginForm extends Form
      */
     public function authenticate(): void
     {
+        $this->email = Str::lower(trim($this->email));
         $this->ensureIsNotRateLimited();
 
         if (! Auth::attempt([
             'email' => $this->email,
             'password' => $this->password,
-            'is_admin' => true,
         ], $this->remember)) {
             RateLimiter::hit($this->throttleKey());
 

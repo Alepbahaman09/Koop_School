@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class InventoryTransaction extends Model
 {
-    protected $fillable = ['product_id', 'user_id', 'type', 'quantity', 'stock_before', 'stock_after', 'reference_type', 'reference_id', 'notes'];
+    protected $fillable = ['product_id', 'user_id', 'admin_id', 'type', 'quantity', 'stock_before', 'stock_after', 'reference_type', 'reference_id', 'notes'];
 
     public function product()
     {
@@ -16,5 +16,10 @@ class InventoryTransaction extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function admin()
+    {
+        return $this->belongsTo(Admin::class);
     }
 }

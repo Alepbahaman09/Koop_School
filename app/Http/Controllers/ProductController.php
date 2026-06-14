@@ -81,7 +81,7 @@ class ProductController extends Controller
             if ($product->stock_quantity > 0) {
                 InventoryTransaction::create([
                     'product_id' => $product->id,
-                    'user_id' => auth()->id(),
+                    'admin_id' => auth()->id(),
                     'type' => 'In',
                     'quantity' => $product->stock_quantity,
                     'stock_before' => 0,
@@ -127,7 +127,7 @@ class ProductController extends Controller
             if ($oldStock !== $product->stock_quantity) {
                 InventoryTransaction::create([
                     'product_id' => $product->id,
-                    'user_id' => auth()->id(),
+                    'admin_id' => auth()->id(),
                     'type' => 'Adjustment',
                     'quantity' => abs($product->stock_quantity - $oldStock),
                     'stock_before' => $oldStock,

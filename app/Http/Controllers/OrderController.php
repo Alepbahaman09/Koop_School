@@ -13,7 +13,7 @@ class OrderController extends Controller
     public function index(Request $request)
     {
         $query = Order::with(['customer', 'orderItems.product', 'payments', 'statusHistory' => function ($q) {
-            $q->latest()->with('user');
+            $q->latest()->with(['user', 'admin']);
         }]);
 
         if ($request->status) {
@@ -60,7 +60,7 @@ class OrderController extends Controller
 
             OrderStatusHistory::create([
                 'order_id' => $order->id,
-                'user_id' => auth()->id(),
+                'admin_id' => auth()->id(),
                 'status' => $validated['status'],
                 'notes' => $validated['notes'] ?? null,
             ]);

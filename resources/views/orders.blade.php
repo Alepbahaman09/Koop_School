@@ -161,7 +161,7 @@
                                         <div class="border-b border-slate-100 p-3 text-sm font-extrabold text-slate-500">Status History</div>
                                         <div class="max-h-44 overflow-y-auto p-3 text-sm">
                                             @forelse ($order->statusHistory as $history)
-                                                <p class="mb-2"><span class="font-extrabold">{{ $history->status }}</span> by {{ $history->user?->name ?? 'Admin' }} <span class="text-slate-400">{{ $history->created_at->diffForHumans() }}</span></p>
+                                                <p class="mb-2"><span class="font-extrabold">{{ $history->status }}</span> by {{ $history->admin?->name ?? $history->user?->name ?? 'System' }} <span class="text-slate-400">{{ $history->created_at->diffForHumans() }}</span></p>
                                             @empty
                                                 <p class="font-semibold text-slate-400">No status updates yet.</p>
                                             @endforelse

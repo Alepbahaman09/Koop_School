@@ -9,14 +9,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->boolean('is_admin')->default(false)->index();
+            $table->dropColumn('api_token_hash');
         });
     }
 
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('is_admin');
+            $table->string('api_token_hash', 64)->nullable()->unique();
         });
     }
 };

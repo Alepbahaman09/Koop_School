@@ -1,7 +1,7 @@
 <?php
 
 use App\Livewire\Actions\Logout;
-use App\Models\User;
+use App\Models\Admin;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Layout;
@@ -14,7 +14,7 @@ new #[Layout('layouts.guest')] class extends Component
      */
     public function sendVerification(): void
     {
-        /** @var User|null $user */
+        /** @var Admin|null $user */
         $user = Auth::user();
 
         if ($user === null) {

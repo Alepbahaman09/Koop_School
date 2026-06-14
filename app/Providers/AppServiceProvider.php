@@ -36,7 +36,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('api-documents', function (Request $request) {
-            return Limit::perMinute(60)->by($this->apiClientKey($request));
+            return Limit::perMinute(600)->by($this->apiClientKey($request));
         });
 
         RateLimiter::for('api', function (Request $request) {

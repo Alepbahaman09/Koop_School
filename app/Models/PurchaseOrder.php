@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class PurchaseOrder extends Model
 {
-    protected $fillable = ['po_number', 'supplier_id', 'user_id', 'status', 'total_amount', 'order_date', 'expected_delivery_date', 'received_date', 'notes'];
+    protected $fillable = ['po_number', 'supplier_id', 'user_id', 'admin_id', 'status', 'total_amount', 'order_date', 'expected_delivery_date', 'received_date', 'notes'];
 
     protected $casts = ['order_date' => 'date', 'expected_delivery_date' => 'date', 'received_date' => 'date'];
 
@@ -18,6 +18,11 @@ class PurchaseOrder extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function admin()
+    {
+        return $this->belongsTo(Admin::class);
     }
 
     public function items()
