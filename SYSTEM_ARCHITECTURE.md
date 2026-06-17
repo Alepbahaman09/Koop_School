@@ -163,12 +163,12 @@ php artisan tinker --execute="echo 'Orders: ' . App\Models\Order::count();"
 
 ### 2. Mobile app creates order via API:
 ```bash
-curl -X POST http://localhost:8000/api/v1/orders -H "Content-Type: application/json" -d '{...}'
+curl -X POST https://api.example.com/api/v1/orders -H "Content-Type: application/json" -d '{...}'
 ```
 
 ### 3. Check dashboard displays order:
 ```
-Open browser: http://localhost:8000/dashboard
+Open browser: https://admin.example.com/dashboard
 ```
 
 ### 4. Verify data in database:

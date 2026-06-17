@@ -217,7 +217,7 @@ The admin dashboard automatically displays data from these tables:
 
 ### Test 1: Create a customer from mobile app
 ```bash
-curl -X POST http://localhost:8000/api/v1/customers \
+curl -X POST https://api.example.com/api/v1/customers \
   -H "Content-Type: application/json" \
   -d '{
     "student_id": "STD001",
@@ -230,7 +230,7 @@ curl -X POST http://localhost:8000/api/v1/customers \
 
 ### Test 2: Create an order from mobile app
 ```bash
-curl -X POST http://localhost:8000/api/v1/orders \
+curl -X POST https://api.example.com/api/v1/orders \
   -H "Content-Type: application/json" \
   -d '{
     "customer_id": 1,
@@ -241,7 +241,7 @@ curl -X POST http://localhost:8000/api/v1/orders \
 
 ### Test 3: View on dashboard
 ```
-Visit: http://localhost:8000/dashboard
+Visit: https://admin.example.com/dashboard
 ```
 
 All data sent from mobile app will immediately appear on the admin dashboard.

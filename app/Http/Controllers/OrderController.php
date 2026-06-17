@@ -16,14 +16,8 @@ class OrderController extends Controller
             $q->latest()->with(['user', 'admin']);
         }]);
 
-        if ($request->status) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->payment_status) {
-            $query->where('payment_status', $request->payment_status);
-        }
-
+        if ($request->status) $query->where('status', $request->status);
+        if ($request->payment_status) $query->where('payment_status', $request->payment_status);
         if ($request->search) {
             $query->where(function ($q) use ($request) {
                 $q->where('order_number', 'like', '%'.$request->search.'%')
@@ -52,7 +46,6 @@ class OrderController extends Controller
             'status' => 'required|in:Pending,Processing,Packed,Ready,Completed,Cancelled',
             'notes' => 'nullable|string',
         ]);
-
         try {
             DB::beginTransaction();
             $order->update(['status' => $validated['status']]);

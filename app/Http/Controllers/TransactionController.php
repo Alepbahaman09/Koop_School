@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Payment;
-use App\Models\Order;
 use Illuminate\Http\Request;
 
 class TransactionController extends Controller
@@ -29,8 +28,6 @@ class TransactionController extends Controller
             });
         }
 
-        $payments = $query->latest()->paginate(20);
-
-        return view('transactions.index', compact('payments'));
+        return response()->json($query->latest()->get());
     }
 }

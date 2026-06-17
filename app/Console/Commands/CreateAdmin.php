@@ -4,45 +4,36 @@ namespace App\Console\Commands;
 
 use App\Models\Admin;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rules\Password;
+use Illuminate\Support\Facades\Hash;
 
 class CreateAdmin extends Command
 {
-    protected $signature = 'admin:create {--email=} {--name=} {--password=}';
+    protected $signature = 'admin:create';
 
-    protected $description = 'Create or promote a PostgreSQL-backed administrator account';
+    protected $description = 'Create or update an administrator account';
 
     public function handle(): int
     {
-        $data = [
-            'email' => strtolower(trim((string) ($this->option('email') ?: $this->ask('Email')))),
-            'name' => trim((string) ($this->option('name') ?: $this->ask('Name'))),
-            'password' => (string) ($this->option('password') ?: $this->secret('Password')),
-        ];
+        $name = $this->ask('Name', 'Koop School Admin');
+        $email = strtolower(trim($this->ask('Email')));
+        $password = $this->secret('Password');
 
-        $validator = Validator::make($data, [
-            'email' => ['required', 'email'],
-            'name' => ['required', 'string', 'max:255'],
-            'password' => ['required', Password::min(8)->letters()->numbers()],
-        ]);
-
-        if ($validator->fails()) {
-            foreach ($validator->errors()->all() as $error) {
-                $this->error($error);
-            }
+        if (! filter_var($email, FILTER_VALIDATE_EMAIL) || strlen((string) $password) < 8) {
+            $this->error('A valid email and password of at least 8 characters are required.');
 
             return self::FAILURE;
         }
 
-        $admin = Admin::firstOrNew(['email' => $data['email']]);
-        $admin->fill([
-            'name' => $data['name'],
-            'password' => $data['password'],
-            'email_verified_at' => $admin->email_verified_at ?: now(),
-        ])->save();
+        Admin::updateOrCreate(
+            ['email' => $email],
+            [
+                'name' => $name,
+                'password' => Hash::make($password),
+                'email_verified_at' => now(),
+            ],
+        );
 
-        $this->info("Administrator {$admin->email} is ready.");
+        $this->info("Administrator account is ready: {$email}");
 
         return self::SUCCESS;
     }

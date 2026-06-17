@@ -14,12 +14,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $postgres = config('database.connections.pgsql');
-
-        config([
-            'database.default' => 'pgsql',
-            'database.connections' => ['pgsql' => $postgres],
-        ]);
+        //
     }
 
     /**
@@ -27,6 +22,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->ensureSupabaseDatabase();
+
         RateLimiter::for('api-auth', function (Request $request) {
             return Limit::perMinute(10)->by(strtolower((string) $request->input('email')).'|'.$request->ip());
         });
@@ -49,5 +46,22 @@ class AppServiceProvider extends ServiceProvider
         $token = $request->bearerToken();
 
         return $token ? hash('sha256', $token) : $request->ip();
+    }
+
+    private function ensureSupabaseDatabase(): void
+    {
+        $url = (string) config('database.connections.pgsql.url', '');
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+        $localHosts = ['localhost', '127.0.0.1', '0.0.0.0', '10.0.2.2'];
+
+        $isSupabaseHost = str_ends_with($host, '.supabase.com') || str_ends_with($host, '.supabase.co');
+
+        if ($host === '' || ! $isSupabaseHost || in_array($host, $localHosts, true) || str_starts_with($host, '192.168.') || str_starts_with($host, '10.')) {
+            throw new \RuntimeException('DATABASE_URL must point to Supabase Postgres, not a local or private database.');
+        }
+
+        if (config('database.connections.pgsql.sslmode') !== 'require') {
+            throw new \RuntimeException('DB_SSLMODE=require is required for Supabase Postgres.');
+        }
     }
 }
