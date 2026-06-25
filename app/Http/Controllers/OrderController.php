@@ -6,6 +6,7 @@ use App\Models\MobileDocument;
 use App\Models\Order;
 use App\Models\OrderStatusHistory;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class OrderController extends Controller
@@ -35,12 +36,25 @@ class OrderController extends Controller
         }
 
         $orders = $query->latest()->paginate(20)->withQueryString();
+        $orderStats = Cache::remember('orders.stats', 30, fn () => (array) Order::query()
+            ->toBase()
+            ->selectRaw(
+                <<<'SQL'
+                COUNT(*) as total,
+                COUNT(CASE WHEN status = 'Pending' THEN 1 END) as pending,
+                COUNT(CASE WHEN status IN ('Processing', 'Packed', 'Ready') THEN 1 END) as in_progress,
+                COUNT(CASE WHEN status = 'Completed' THEN 1 END) as completed,
+                COUNT(CASE WHEN status = 'Cancelled' THEN 1 END) as cancelled
+                SQL
+            )
+            ->first());
+
         $stats = [
-            'total' => Order::count(),
-            'pending' => Order::where('status', 'Pending')->count(),
-            'in_progress' => Order::whereIn('status', ['Processing', 'Packed', 'Ready'])->count(),
-            'completed' => Order::where('status', 'Completed')->count(),
-            'cancelled' => Order::where('status', 'Cancelled')->count(),
+            'total' => (int) $orderStats['total'],
+            'pending' => (int) $orderStats['pending'],
+            'in_progress' => (int) $orderStats['in_progress'],
+            'completed' => (int) $orderStats['completed'],
+            'cancelled' => (int) $orderStats['cancelled'],
         ];
 
         return view('orders', compact('orders', 'stats'));

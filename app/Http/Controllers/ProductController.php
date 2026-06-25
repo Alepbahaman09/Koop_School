@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\InventoryTransaction;
 use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -39,12 +40,25 @@ class ProductController extends Controller
 
         $products = $query->latest()->paginate(20)->withQueryString();
         $categories = Category::orderBy('name')->get();
+        $productStats = Cache::remember('products.stats', 30, fn () => (array) Product::query()
+            ->toBase()
+            ->selectRaw(
+                <<<'SQL'
+                COUNT(*) as total,
+                COUNT(CASE WHEN is_active = true THEN 1 END) as active,
+                COUNT(CASE WHEN stock_quantity > 0 AND stock_quantity <= min_stock_level THEN 1 END) as low,
+                COUNT(CASE WHEN stock_quantity = 0 THEN 1 END) as out,
+                COALESCE(SUM(price * stock_quantity), 0) as inventory_value
+                SQL
+            )
+            ->first());
+
         $stats = [
-            'total' => Product::count(),
-            'active' => Product::where('is_active', true)->count(),
-            'low' => Product::where('stock_quantity', '>', 0)->whereColumn('stock_quantity', '<=', 'min_stock_level')->count(),
-            'out' => Product::where('stock_quantity', 0)->count(),
-            'inventory_value' => Product::selectRaw('COALESCE(SUM(price * stock_quantity), 0) as value')->value('value'),
+            'total' => (int) $productStats['total'],
+            'active' => (int) $productStats['active'],
+            'low' => (int) $productStats['low'],
+            'out' => (int) $productStats['out'],
+            'inventory_value' => (float) $productStats['inventory_value'],
         ];
 
         return view('products', compact('products', 'categories', 'stats'));
