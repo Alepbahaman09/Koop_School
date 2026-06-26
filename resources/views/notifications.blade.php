@@ -4,114 +4,60 @@
 @section('page-title', 'Notifications')
 
 @section('content')
+@include('partials.admin-alerts')
+
 <section class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-    <h1 class="text-xl font-extrabold tracking-normal">Notifications</h1>
-    <button class="h-10 rounded-lg bg-white px-5 text-sm font-extrabold text-indigo-600 ring-1 ring-indigo-200 hover:bg-indigo-50">Mark all as read</button>
+    <div>
+        <h1 class="text-xl font-extrabold tracking-normal">Notifications</h1>
+        <p class="mt-1 text-sm font-medium text-slate-500">{{ number_format($stats['unread']) }} unread of {{ number_format($stats['total']) }} total notifications.</p>
+    </div>
+    <form method="POST" action="{{ route('notifications.readAll') }}">
+        @csrf
+        <button class="h-10 rounded-lg bg-white px-5 text-sm font-extrabold text-indigo-600 ring-1 ring-indigo-200 hover:bg-indigo-50">Mark all as read</button>
+    </form>
+</section>
+
+<section class="grid gap-4 sm:grid-cols-3">
+    @foreach ([['All', $stats['total'], ''], ['Unread', $stats['unread'], 'unread'], ['Orders', $stats['orders'], 'orders']] as [$label, $value, $key])
+        <a href="{{ route('notifications', array_filter(['filter' => $key])) }}" class="rounded-lg bg-white p-5 shadow-sm ring-1 {{ $filter === $key || ($key === '' && $filter === '') ? 'ring-indigo-200' : 'ring-slate-100' }}">
+            <p class="text-sm font-bold text-slate-400">{{ $label }}</p>
+            <p class="mt-2 text-2xl font-extrabold text-slate-950">{{ number_format($value) }}</p>
+        </a>
+    @endforeach
 </section>
 
 <section class="rounded-lg bg-white shadow-sm ring-1 ring-slate-100">
     <div class="divide-y divide-slate-100">
-        <article class="flex items-start gap-4 p-5 hover:bg-slate-50">
-            <div class="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-indigo-50">
-                <span class="text-2xl">🛒</span>
+        @forelse ($notifications as $notification)
+            <article class="flex items-start gap-4 p-5 hover:bg-slate-50">
+                <div class="grid h-12 w-12 shrink-0 place-items-center rounded-lg {{ $notification->read_at ? 'bg-slate-100 text-slate-400' : 'bg-indigo-50 text-indigo-600' }}">
+                    <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="{{ $notification->type === 'order_created' ? 'M6 6h15l-1.5 9h-12L6 6Zm0 0L5 3H2m7 18h.01m9 0h.01' : 'M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Zm-8 12h4' }}" />
+                    </svg>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <p class="font-extrabold text-slate-900">{{ $notification->title }}</p>
+                    <p class="mt-1 text-sm text-slate-500">{{ $notification->message }}</p>
+                    <p class="mt-2 text-xs font-semibold text-slate-400">{{ $notification->created_at->diffForHumans() }}</p>
+                </div>
+                <div class="flex shrink-0 items-center gap-3">
+                    @unless ($notification->read_at)
+                        <span class="h-2 w-2 rounded-full bg-indigo-600"></span>
+                    @endunless
+                    <form method="POST" action="{{ route('notifications.read', $notification) }}">
+                        @csrf
+                        @method('PATCH')
+                        <button class="rounded-lg px-3 py-1.5 text-xs font-extrabold text-indigo-600 ring-1 ring-indigo-100 hover:bg-indigo-50">{{ $notification->link ? 'Open' : 'Read' }}</button>
+                    </form>
+                </div>
+            </article>
+        @empty
+            <div class="p-12 text-center">
+                <p class="font-extrabold text-slate-700">No notifications yet</p>
+                <p class="mt-1 text-sm font-medium text-slate-400">New mobile app orders will appear here automatically.</p>
             </div>
-            <div class="min-w-0 flex-1">
-                <p class="font-extrabold text-slate-900">New Order Received #ORD-0047</p>
-                <p class="mt-1 text-sm text-slate-500">Esther Howard placed an order worth $320.00 for 12 items</p>
-                <p class="mt-2 text-xs font-semibold text-slate-400">5 minutes ago</p>
-            </div>
-            <span class="h-2 w-2 shrink-0 rounded-full bg-indigo-600"></span>
-        </article>
-
-        <article class="flex items-start gap-4 p-5 hover:bg-slate-50">
-            <div class="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-amber-50">
-                <span class="text-2xl">⚠️</span>
-            </div>
-            <div class="min-w-0 flex-1">
-                <p class="font-extrabold text-slate-900">Low Stock Alert</p>
-                <p class="mt-1 text-sm text-slate-500">Smart Watch Pro X has only 8 units left in inventory</p>
-                <p class="mt-2 text-xs font-semibold text-slate-400">1 hour ago</p>
-            </div>
-            <span class="h-2 w-2 shrink-0 rounded-full bg-indigo-600"></span>
-        </article>
-
-        <article class="flex items-start gap-4 p-5 hover:bg-slate-50">
-            <div class="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-emerald-50">
-                <span class="text-2xl">💰</span>
-            </div>
-            <div class="min-w-0 flex-1">
-                <p class="font-extrabold text-slate-900">Payment Received</p>
-                <p class="mt-1 text-sm text-slate-500">Monthly subscription payment of $89.00 processed successfully</p>
-                <p class="mt-2 text-xs font-semibold text-slate-400">3 hours ago</p>
-            </div>
-            <span class="h-2 w-2 shrink-0 rounded-full bg-indigo-600"></span>
-        </article>
-
-        <article class="flex items-start gap-4 p-5 hover:bg-slate-50">
-            <div class="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-violet-50">
-                <span class="text-2xl">⭐</span>
-            </div>
-            <div class="min-w-0 flex-1">
-                <p class="font-extrabold text-slate-900">New VIP Customer</p>
-                <p class="mt-1 text-sm text-slate-500">Esther Howard has been upgraded to VIP status after $3,000+ in purchases</p>
-                <p class="mt-2 text-xs font-semibold text-slate-400">Yesterday</p>
-            </div>
-        </article>
-
-        <article class="flex items-start gap-4 p-5 hover:bg-slate-50">
-            <div class="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-sky-50">
-                <span class="text-2xl">📊</span>
-            </div>
-            <div class="min-w-0 flex-1">
-                <p class="font-extrabold text-slate-900">Monthly Report Ready</p>
-                <p class="mt-1 text-sm text-slate-500">Your October 2025 sales report is ready to download</p>
-                <p class="mt-2 text-xs font-semibold text-slate-400">2 days ago</p>
-            </div>
-        </article>
-
-        <article class="flex items-start gap-4 p-5 hover:bg-slate-50">
-            <div class="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-blue-50">
-                <span class="text-2xl">📦</span>
-            </div>
-            <div class="min-w-0 flex-1">
-                <p class="font-extrabold text-slate-900">Order Status Updated</p>
-                <p class="mt-1 text-sm text-slate-500">Order #ORD-0039 has been marked as delivered successfully</p>
-                <p class="mt-2 text-xs font-semibold text-slate-400">3 days ago</p>
-            </div>
-        </article>
-
-        <article class="flex items-start gap-4 p-5 hover:bg-slate-50">
-            <div class="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-rose-50">
-                <span class="text-2xl">❌</span>
-            </div>
-            <div class="min-w-0 flex-1">
-                <p class="font-extrabold text-slate-900">Order Cancelled</p>
-                <p class="mt-1 text-sm text-slate-500">Order #ORD-0038 was cancelled by Cody Fisher</p>
-                <p class="mt-2 text-xs font-semibold text-slate-400">4 days ago</p>
-            </div>
-        </article>
-
-        <article class="flex items-start gap-4 p-5 hover:bg-slate-50">
-            <div class="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-indigo-50">
-                <span class="text-2xl">🎉</span>
-            </div>
-            <div class="min-w-0 flex-1">
-                <p class="font-extrabold text-slate-900">Sales Milestone Reached</p>
-                <p class="mt-1 text-sm text-slate-500">Congratulations! You've reached 1,000 orders this month</p>
-                <p class="mt-2 text-xs font-semibold text-slate-400">5 days ago</p>
-            </div>
-        </article>
-
-        <article class="flex items-start gap-4 p-5 hover:bg-slate-50">
-            <div class="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-emerald-50">
-                <span class="text-2xl">✅</span>
-            </div>
-            <div class="min-w-0 flex-1">
-                <p class="font-extrabold text-slate-900">Stock Replenished</p>
-                <p class="mt-1 text-sm text-slate-500">Nike Air Max 2024 inventory has been restocked with 100 units</p>
-                <p class="mt-2 text-xs font-semibold text-slate-400">1 week ago</p>
-            </div>
-        </article>
+        @endforelse
     </div>
+    <div class="border-t border-slate-100 p-4">{{ $notifications->links() }}</div>
 </section>
 @endsection

@@ -3,36 +3,64 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdminNotification;
+use App\Models\Customer;
 use App\Models\InventoryTransaction;
-use App\Models\MobileDocument;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class OrderController extends Controller
 {
     public function store(Request $request)
     {
+        $authUser = $request->user();
+        if ($authUser && $request->filled('user_id') && (int) $request->user_id !== $authUser->id) {
+            return response()->json(['success' => false, 'message' => 'Orders must belong to the authenticated user.'], 403);
+        }
+
+        $userId = $authUser?->id ?? $request->input('user_id');
         $validator = Validator::make($request->all(), [
-            'customer_id' => 'required|exists:customers,id',
-            'user_id' => 'required|exists:users,id',
+            'customer_id' => [$authUser ? 'nullable' : 'required', 'exists:customers,id'],
+            'user_id' => [$authUser ? 'nullable' : 'required', 'exists:users,id'],
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|distinct|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
             'tax' => 'nullable|numeric',
             'discount' => 'nullable|numeric',
             'notes' => 'nullable|string',
+            'mobile_reference' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::unique('orders', 'mobile_reference')->where(fn ($query) => $query->where('user_id', $userId)),
+            ],
         ]);
 
         if ($validator->fails()) {
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
         }
+        if (! $userId) {
+            return response()->json(['success' => false, 'message' => 'User is required.'], 422);
+        }
 
         DB::beginTransaction();
         try {
+            $customerId = $request->customer_id;
+            if ($authUser) {
+                $customerId = Customer::firstOrCreate(['email' => $authUser->email], [
+                    'student_id' => 'APP-'.$authUser->id,
+                    'parent_name' => $authUser->username ?: $authUser->name,
+                    'student_name' => $authUser->username ?: $authUser->name,
+                    'phone' => $authUser->phone_number ?: '-',
+                    'class' => '-',
+                    'address' => '-',
+                ])->id;
+            }
             $subtotal = 0;
             $products = [];
 
@@ -63,8 +91,9 @@ class OrderController extends Controller
 
             $order = Order::create([
                 'order_number' => $orderNumber,
-                'customer_id' => $request->customer_id,
-                'user_id' => $request->user_id,
+                'mobile_reference' => $request->mobile_reference,
+                'customer_id' => $customerId,
+                'user_id' => $userId,
                 'status' => 'Pending',
                 'subtotal' => $subtotal,
                 'tax' => $tax,
@@ -91,7 +120,7 @@ class OrderController extends Controller
 
                 InventoryTransaction::create([
                     'product_id' => $product->id,
-                    'user_id' => $request->user_id,
+                    'user_id' => $userId,
                     'type' => 'Out',
                     'quantity' => $item['quantity'],
                     'stock_before' => $stockBefore,
@@ -105,6 +134,7 @@ class OrderController extends Controller
             DB::commit();
 
             $order->load(['customer', 'orderItems.product']);
+            AdminNotification::forOrder($order, 'mobile_api');
 
             return response()->json(['success' => true, 'data' => $order], 201);
         } catch (\Exception $e) {
@@ -114,16 +144,21 @@ class OrderController extends Controller
         }
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $orders = Order::with(['customer', 'orderItems.product'])->latest()->get();
+        $orders = Order::with(['customer', 'orderItems.product'])
+            ->when($request->user(), fn ($query, $user) => $query->where('user_id', $user->id))
+            ->latest()
+            ->get();
 
         return response()->json(['success' => true, 'data' => $orders]);
     }
 
-    public function show($id)
+    public function show(Request $request, $id)
     {
-        $order = Order::with(['customer', 'orderItems.product', 'payments', 'statusHistory.user'])->find($id);
+        $order = Order::with(['customer', 'orderItems.product', 'payments', 'statusHistory.user'])
+            ->when($request->user(), fn ($query, $user) => $query->where('user_id', $user->id))
+            ->find($id);
 
         if (! $order) {
             return response()->json(['success' => false, 'message' => 'Order not found'], 404);
@@ -142,20 +177,14 @@ class OrderController extends Controller
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
         }
 
-        $order = Order::find($id);
+        $order = Order::query()
+            ->when($request->user(), fn ($query, $user) => $query->where('user_id', $user->id))
+            ->find($id);
         if (! $order) {
             return response()->json(['success' => false, 'message' => 'Order not found'], 404);
         }
 
         $order->update(['status' => $request->status]);
-        $document = $order->source_document_path
-            ? MobileDocument::where('path', $order->source_document_path)->first()
-            : MobileDocument::where('data->orderNumber', $order->order_number)->first();
-        if ($document) {
-            $data = $document->data;
-            $data['orderStatus'] = $order->status;
-            $document->update(['data' => $data]);
-        }
 
         return response()->json(['success' => true, 'data' => $order]);
     }

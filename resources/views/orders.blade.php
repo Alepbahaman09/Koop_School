@@ -153,7 +153,7 @@
                                         <div class="border-b border-slate-100 p-3 text-sm font-extrabold text-slate-500">Payment Summary</div>
                                         <div class="p-3 text-sm">
                                             <p>Total: <span class="font-extrabold">RM {{ number_format($order->total_amount, 2) }}</span></p>
-                                            <p>Paid: <span class="font-extrabold">RM {{ number_format($order->payments->where('status', 'Completed')->sum('amount'), 2) }}</span></p>
+                                            <p>Paid: <span class="font-extrabold">RM {{ number_format($order->completed_payments_total ?? 0, 2) }}</span></p>
                                             <p>Status: <span class="font-extrabold">{{ $order->payment_status }}</span></p>
                                         </div>
                                     </div>

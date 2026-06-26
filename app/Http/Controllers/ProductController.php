@@ -14,7 +14,9 @@ class ProductController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Product::with('category');
+        $query = Product::query()
+            ->select(['id', 'category_id', 'sku', 'name', 'price', 'stock_quantity', 'min_stock_level', 'image', 'is_active', 'created_at'])
+            ->with('category:id,name');
 
         if ($request->filled('search')) {
             $search = (string) $request->string('search')->trim();
@@ -39,7 +41,9 @@ class ProductController extends Controller
         }
 
         $products = $query->latest()->paginate(20)->withQueryString();
-        $categories = Category::orderBy('name')->get();
+        $categories = Category::where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
         $productStats = Cache::remember('products.stats', 30, fn () => (array) Product::query()
             ->toBase()
             ->selectRaw(

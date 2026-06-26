@@ -4,173 +4,113 @@
 @section('page-title', 'Finance')
 
 @section('content')
+@include('partials.admin-alerts')
+
+@php
+    $metricStyles = [
+        'indigo' => 'bg-indigo-600 text-white shadow-indigo-100',
+        'rose' => 'bg-white text-rose-600 ring-slate-100',
+        'emerald' => 'bg-white text-emerald-600 ring-slate-100',
+    ];
+    $maxTrend = max(1, $trend->max(fn ($item) => max($item['income'], $item['expenses'])));
+    $maxExpense = max(1, (float) $expenseBreakdown->max('amount'));
+@endphp
+
 <section class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-    <h1 class="text-xl font-extrabold tracking-normal">Finance</h1>
-    <div class="flex gap-2">
-        <button class="h-10 rounded-lg bg-white px-4 text-sm font-bold text-slate-600 ring-1 ring-slate-200">October 2025</button>
-        <button class="h-10 rounded-lg bg-indigo-600 px-4 text-sm font-extrabold text-white shadow-sm shadow-indigo-100">Generate Report</button>
+    <div>
+        <h1 class="text-xl font-extrabold tracking-normal">Finance</h1>
+        <p class="mt-1 text-sm font-medium text-slate-500">{{ $start->format('d M Y') }} - {{ $end->format('d M Y') }}</p>
     </div>
+    <form method="GET" class="flex flex-wrap gap-2">
+        <input type="month" name="month" value="{{ $month }}" class="h-10 rounded-lg border-slate-200 bg-white px-3 text-sm font-bold text-slate-600">
+        <button class="h-10 rounded-lg bg-slate-900 px-4 text-sm font-extrabold text-white">Apply</button>
+        <a href="{{ route('finance.export', ['month' => $month]) }}" class="inline-flex h-10 items-center rounded-lg bg-indigo-600 px-4 text-sm font-extrabold text-white shadow-sm shadow-indigo-100">Export CSV</a>
+    </form>
 </section>
 
 <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-    <article class="overflow-hidden rounded-lg bg-gradient-to-br from-indigo-600 to-violet-600 p-6 text-white shadow-lg shadow-indigo-200">
-        <p class="text-sm font-bold opacity-90">Total Income</p>
-        <p class="mt-2 text-4xl font-extrabold tracking-tight">$124,542</p>
-        <p class="mt-1 text-xs font-extrabold">▲ +41% from last month</p>
-    </article>
-
-    <article class="rounded-lg bg-white p-6 shadow-sm ring-1 ring-slate-100">
-        <p class="text-sm font-bold text-slate-400">Total Expenses</p>
-        <p class="mt-2 text-4xl font-extrabold tracking-tight text-rose-600">$63,890</p>
-        <p class="mt-1 text-xs font-extrabold text-rose-500">▼ -8% from last month</p>
-    </article>
-
-    <article class="rounded-lg bg-white p-6 shadow-sm ring-1 ring-slate-100">
-        <p class="text-sm font-bold text-slate-400">Net Profit</p>
-        <p class="mt-2 text-4xl font-extrabold tracking-tight text-emerald-600">$60,652</p>
-        <p class="mt-1 text-xs font-extrabold text-emerald-500">▲ +41% from last month</p>
-    </article>
+    @foreach ($metrics as $metric)
+        @php
+            $change = $metric['previous'] > 0 ? (($metric['value'] - $metric['previous']) / abs($metric['previous'])) * 100 : ($metric['value'] > 0 ? 100 : 0);
+        @endphp
+        <article class="rounded-lg p-6 shadow-sm {{ $metricStyles[$metric['tone']] }}">
+            <p class="text-sm font-bold {{ $metric['tone'] === 'indigo' ? 'text-white/90' : 'text-slate-400' }}">{{ $metric['label'] }}</p>
+            <p class="mt-2 text-3xl font-extrabold tracking-tight">RM {{ number_format($metric['value'], 2) }}</p>
+            <p class="mt-1 text-xs font-extrabold {{ $metric['tone'] === 'indigo' ? 'text-white/80' : ($change >= 0 ? 'text-emerald-500' : 'text-rose-500') }}">{{ $change >= 0 ? '+' : '' }}{{ number_format($change, 1) }}% from previous month</p>
+        </article>
+    @endforeach
 </section>
 
 <section class="grid gap-5 xl:grid-cols-[1.3fr_1fr]">
     <article class="rounded-lg bg-white p-5 shadow-sm ring-1 ring-slate-100">
-        <h2 class="mb-5 text-lg font-extrabold">Income vs Expense</h2>
+        <h2 class="mb-5 text-lg font-extrabold">Income vs Expenses</h2>
         <div class="mb-3 flex justify-center gap-6 text-xs font-extrabold">
             <span class="flex items-center gap-2"><span class="h-3 w-3 rounded bg-indigo-600"></span> Income</span>
-            <span class="flex items-center gap-2"><span class="h-3 w-3 rounded bg-rose-400"></span> Expense</span>
+            <span class="flex items-center gap-2"><span class="h-3 w-3 rounded bg-rose-400"></span> Expenses</span>
         </div>
-        <div class="grid h-64 grid-cols-[50px_1fr] gap-3">
-            <div class="flex flex-col justify-between pb-6 text-right text-xs font-bold text-slate-300">
-                <span>$140K</span>
-                <span>$120K</span>
-                <span>$100K</span>
-                <span>$80K</span>
-                <span>$60K</span>
-                <span>$40K</span>
-                <span>$20K</span>
-                <span>$0K</span>
-            </div>
-            <div class="relative">
-                <div class="absolute inset-x-0 top-0 h-px bg-slate-100"></div>
-                <div class="absolute inset-x-0 top-[14.28%] h-px bg-slate-100"></div>
-                <div class="absolute inset-x-0 top-[28.56%] h-px bg-slate-100"></div>
-                <div class="absolute inset-x-0 top-[42.84%] h-px bg-slate-100"></div>
-                <div class="absolute inset-x-0 top-[57.12%] h-px bg-slate-100"></div>
-                <div class="absolute inset-x-0 top-[71.4%] h-px bg-slate-100"></div>
-                <div class="absolute inset-x-0 top-[85.68%] h-px bg-slate-100"></div>
-                <div class="relative flex h-full items-end gap-2 pb-6">
-                    @php
-                        $months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
-                        $income = [65, 72, 68, 75, 80, 78, 88, 85, 95, 98];
-                        $expense = [45, 52, 48, 50, 55, 52, 58, 60, 62, 65];
-                    @endphp
-                    @foreach ($months as $index => $month)
-                        <div class="flex min-w-0 flex-1 flex-col items-center gap-2">
-                            <div class="flex w-full gap-1">
-                                <div class="flex-1 rounded-t bg-indigo-600" style="height: {{ $income[$index] * 2.5 }}px;"></div>
-                                <div class="flex-1 rounded-t bg-rose-400" style="height: {{ $expense[$index] * 2.5 }}px;"></div>
-                            </div>
-                            <span class="text-[10px] font-bold text-slate-400">{{ $month }}</span>
-                        </div>
-                    @endforeach
+        <div class="flex h-72 items-end gap-3 border-b border-slate-100 px-1 pb-7">
+            @foreach ($trend as $item)
+                <div class="flex min-w-0 flex-1 flex-col items-center gap-2">
+                    <div class="flex h-56 w-full items-end gap-1">
+                        <div class="flex-1 rounded-t bg-indigo-600" style="height: {{ max(4, ($item['income'] / $maxTrend) * 224) }}px"></div>
+                        <div class="flex-1 rounded-t bg-rose-400" style="height: {{ max(4, ($item['expenses'] / $maxTrend) * 224) }}px"></div>
+                    </div>
+                    <span class="text-[10px] font-bold text-slate-400">{{ $item['label'] }}</span>
                 </div>
-            </div>
+            @endforeach
         </div>
     </article>
 
     <article class="rounded-lg bg-white p-5 shadow-sm ring-1 ring-slate-100">
         <h2 class="mb-5 text-lg font-extrabold">Expense Breakdown</h2>
         <div class="space-y-4">
-            <div>
-                <div class="mb-2 flex items-center justify-between">
-                    <span class="text-sm font-bold text-slate-700">Operations</span>
-                    <span class="text-sm font-extrabold text-slate-900">$24,200</span>
+            @forelse ($expenseBreakdown as $expense)
+                <div>
+                    <div class="mb-2 flex items-center justify-between gap-3">
+                        <span class="truncate text-sm font-bold text-slate-700">{{ $expense->label }}</span>
+                        <span class="text-sm font-extrabold text-slate-900">RM {{ number_format($expense->amount, 2) }}</span>
+                    </div>
+                    <div class="h-2 overflow-hidden rounded-full bg-slate-100">
+                        <div class="h-full rounded-full bg-indigo-600" style="width: {{ max(3, ((float) $expense->amount / $maxExpense) * 100) }}%"></div>
+                    </div>
                 </div>
-                <div class="h-2 overflow-hidden rounded-full bg-slate-100">
-                    <div class="h-full rounded-full bg-indigo-600" style="width: 75%"></div>
-                </div>
-            </div>
-            <div>
-                <div class="mb-2 flex items-center justify-between">
-                    <span class="text-sm font-bold text-slate-700">Marketing</span>
-                    <span class="text-sm font-extrabold text-slate-900">$16,500</span>
-                </div>
-                <div class="h-2 overflow-hidden rounded-full bg-slate-100">
-                    <div class="h-full rounded-full bg-emerald-500" style="width: 60%"></div>
-                </div>
-            </div>
-            <div>
-                <div class="mb-2 flex items-center justify-between">
-                    <span class="text-sm font-bold text-slate-700">Logistics</span>
-                    <span class="text-sm font-extrabold text-slate-900">$12,100</span>
-                </div>
-                <div class="h-2 overflow-hidden rounded-full bg-slate-100">
-                    <div class="h-full rounded-full bg-amber-500" style="width: 45%"></div>
-                </div>
-            </div>
-            <div>
-                <div class="mb-2 flex items-center justify-between">
-                    <span class="text-sm font-bold text-slate-700">Staff</span>
-                    <span class="text-sm font-extrabold text-slate-900">$9,090</span>
-                </div>
-                <div class="h-2 overflow-hidden rounded-full bg-slate-100">
-                    <div class="h-full rounded-full bg-indigo-600" style="width: 35%"></div>
-                </div>
-            </div>
+            @empty
+                <p class="rounded-lg bg-slate-50 p-5 text-sm font-semibold text-slate-400">No received purchase orders for this month.</p>
+            @endforelse
         </div>
     </article>
 </section>
 
 <section class="rounded-lg bg-white p-5 shadow-sm ring-1 ring-slate-100">
     <div class="mb-5 flex items-center justify-between">
-        <h2 class="text-lg font-extrabold">Recent Transactions</h2>
-        <div class="flex gap-2 text-sm font-extrabold">
-            <button class="rounded-lg px-3 py-1.5 text-indigo-600 bg-indigo-50">All</button>
-            <button class="rounded-lg px-3 py-1.5 text-slate-500 hover:bg-slate-50">Income</button>
-            <button class="rounded-lg px-3 py-1.5 text-slate-500 hover:bg-slate-50">Expense</button>
-        </div>
+        <h2 class="text-lg font-extrabold">Recent Finance Activity</h2>
+        <p class="text-sm font-bold text-slate-400">Income minus expenses: <span class="{{ $profit >= 0 ? 'text-emerald-600' : 'text-rose-600' }}">RM {{ number_format($profit, 2) }}</span></p>
     </div>
     <div class="overflow-x-auto">
-        <table class="w-full min-w-[800px] text-left text-sm">
+        <table class="w-full min-w-[850px] text-left text-sm">
             <thead>
                 <tr class="border-b border-slate-100 text-xs font-extrabold uppercase tracking-wide text-slate-400">
-                    <th class="py-3 pr-4">Transaction ID</th>
+                    <th class="py-3 pr-4">Reference</th>
                     <th class="py-3 pr-4">Description</th>
+                    <th class="py-3 pr-4">Party</th>
                     <th class="py-3 pr-4">Date</th>
-                    <th class="py-3 pr-4">Category</th>
                     <th class="py-3 pr-4">Amount</th>
-                    <th class="py-3 pr-4">Type</th>
                     <th class="py-3 text-right">Status</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-50">
-                <tr class="hover:bg-slate-50/70">
-                    <td class="py-4 pr-4 font-extrabold text-slate-900">#TRX-001</td>
-                    <td class="py-4 pr-4 font-semibold text-slate-600">Order Payment - Savannah</td>
-                    <td class="py-4 pr-4 text-slate-500">07/05/2025</td>
-                    <td class="py-4 pr-4 text-slate-500">Sales</td>
-                    <td class="py-4 pr-4 font-extrabold text-emerald-600">+$125.00</td>
-                    <td class="py-4 pr-4"><span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-extrabold text-emerald-600">Income</span></td>
-                    <td class="py-4 text-right"><span class="rounded-full bg-sky-50 px-3 py-1 text-xs font-extrabold text-sky-600">Completed</span></td>
-                </tr>
-                <tr class="hover:bg-slate-50/70">
-                    <td class="py-4 pr-4 font-extrabold text-slate-900">#TRX-002</td>
-                    <td class="py-4 pr-4 font-semibold text-slate-600">Marketing Campaign - Google Ads</td>
-                    <td class="py-4 pr-4 text-slate-500">07/05/2025</td>
-                    <td class="py-4 pr-4 text-slate-500">Marketing</td>
-                    <td class="py-4 pr-4 font-extrabold text-rose-600">-$450.00</td>
-                    <td class="py-4 pr-4"><span class="rounded-full bg-rose-50 px-3 py-1 text-xs font-extrabold text-rose-600">Expense</span></td>
-                    <td class="py-4 text-right"><span class="rounded-full bg-sky-50 px-3 py-1 text-xs font-extrabold text-sky-600">Completed</span></td>
-                </tr>
-                <tr class="hover:bg-slate-50/70">
-                    <td class="py-4 pr-4 font-extrabold text-slate-900">#TRX-003</td>
-                    <td class="py-4 pr-4 font-semibold text-slate-600">Supplier Payment - Inventory</td>
-                    <td class="py-4 pr-4 text-slate-500">06/05/2025</td>
-                    <td class="py-4 pr-4 text-slate-500">Operations</td>
-                    <td class="py-4 pr-4 font-extrabold text-rose-600">-$2,340.00</td>
-                    <td class="py-4 pr-4"><span class="rounded-full bg-rose-50 px-3 py-1 text-xs font-extrabold text-rose-600">Expense</span></td>
-                    <td class="py-4 text-right"><span class="rounded-full bg-amber-50 px-3 py-1 text-xs font-extrabold text-amber-600">Pending</span></td>
-                </tr>
+                @forelse ($recentTransactions as $transaction)
+                    <tr class="hover:bg-slate-50/70">
+                        <td class="py-4 pr-4 font-extrabold text-slate-900">{{ $transaction['id'] }}</td>
+                        <td class="py-4 pr-4 font-semibold text-slate-600">{{ $transaction['description'] }}</td>
+                        <td class="py-4 pr-4 text-slate-500">{{ $transaction['party'] }}</td>
+                        <td class="py-4 pr-4 text-slate-500">{{ $transaction['date_label'] }}</td>
+                        <td class="py-4 pr-4 font-extrabold {{ $transaction['type'] === 'Income' ? 'text-emerald-600' : 'text-rose-600' }}">{{ $transaction['type'] === 'Income' ? '+' : '-' }}RM {{ number_format($transaction['amount'], 2) }}</td>
+                        <td class="py-4 text-right"><span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-600">{{ $transaction['status'] }}</span></td>
+                    </tr>
+                @empty
+                    <tr><td colspan="6" class="py-12 text-center font-semibold text-slate-400">No finance activity found.</td></tr>
+                @endforelse
             </tbody>
         </table>
     </div>

@@ -1,4 +1,9 @@
 @php
+    $unreadNotifications = \Illuminate\Support\Facades\Cache::remember(
+        'admin_notifications.unread_count',
+        15,
+        fn () => \App\Models\AdminNotification::whereNull('read_at')->count(),
+    );
     $navItems = [
         ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'M3 13h8V3H3v10Zm10 8h8V3h-8v18ZM3 21h8v-6H3v6Z'],
         ['label' => 'Orders', 'route' => 'orders.index', 'icon' => 'M6 6h15l-1.5 9h-12L6 6Zm0 0L5 3H2m7 18a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm9 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z'],
@@ -8,6 +13,7 @@
 
     $toolItems = [
         ['label' => 'Analytics', 'route' => 'analytics', 'icon' => 'M4 19V5m5 14V9m5 10V3m5 16v-7'],
+        ['label' => 'Transactions', 'route' => 'transactions.index', 'icon' => 'M4 7h16M4 12h16M4 17h10m4-1 2 2 3-4'],
         ['label' => 'Finance', 'route' => 'finance', 'icon' => 'M12 6v12m4-8c0-2.2-1.8-4-4-4s-4 1.2-4 3 1.8 3 4 3 4 1.2 4 3-1.8 3-4 3-4-1.8-4-4'],
         ['label' => 'Notifications', 'route' => 'notifications', 'icon' => 'M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Zm-8 12h4'],
         ['label' => 'Settings', 'route' => 'settings', 'icon' => 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8-3a8 8 0 0 0-.11-1.32l2.03-1.58-2-3.46-2.39.96a8.15 8.15 0 0 0-2.28-1.32L15 2h-4l-.36 3.28A8.15 8.15 0 0 0 8.36 6.6l-2.39-.96-2 3.46 2.03 1.58A8 8 0 0 0 6 12c0 .45.04.89.11 1.32l-2.03 1.58 2 3.46 2.39-.96a8.15 8.15 0 0 0 2.28 1.32L11 22h4l.36-3.28a8.15 8.15 0 0 0 2.28-1.32l2.39.96 2-3.46-2.03-1.58c.07-.43.11-.87.11-1.32Z'],
@@ -128,11 +134,14 @@
                         </form>
 
                         <div class="ml-auto flex flex-1 items-center justify-end gap-3">
-                            <button class="grid h-10 w-10 place-items-center rounded-lg text-slate-500 hover:bg-slate-100" title="Notifications">
+                            <a href="{{ route('notifications') }}" class="relative grid h-10 w-10 place-items-center rounded-lg text-slate-500 hover:bg-slate-100" title="Notifications">
                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                                     <path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4" />
                                 </svg>
-                            </button>
+                                @if ($unreadNotifications > 0)
+                                    <span class="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-rose-500 px-1 text-[10px] font-extrabold text-white">{{ $unreadNotifications > 9 ? '9+' : $unreadNotifications }}</span>
+                                @endif
+                            </a>
                             <a href="{{ route('profile') }}" class="grid h-10 w-10 place-items-center rounded-lg bg-indigo-600 text-sm font-bold text-white" title="Profile">
                                 {{ strtoupper(substr(auth()->user()->name ?? 'A', 0, 1)) }}
                             </a>

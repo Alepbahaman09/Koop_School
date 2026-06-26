@@ -4,12 +4,15 @@ use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\FinanceController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\TransactionController;
 use Illuminate\Support\Facades\Route;
 
-Route::view('/', 'welcome');
+Route::redirect('/', '/login');
 
 Route::get('dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified', 'admin'])
@@ -33,6 +36,16 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('users/{customer}', [CustomerController::class, 'show'])->name('users.show');
 
     Route::get('transactions', [TransactionController::class, 'index'])->name('transactions.index');
+
+    Route::get('finance', [FinanceController::class, 'index'])->name('finance');
+    Route::get('finance/export', [FinanceController::class, 'export'])->name('finance.export');
+
+    Route::get('settings', [SettingsController::class, 'index'])->name('settings');
+    Route::patch('settings', [SettingsController::class, 'update'])->name('settings.update');
+
+    Route::get('notifications', [NotificationController::class, 'index'])->name('notifications');
+    Route::post('notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.readAll');
+    Route::patch('notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
 });
 
 Route::get('analytics', [AnalyticsController::class, 'index'])
@@ -41,18 +54,6 @@ Route::get('analytics', [AnalyticsController::class, 'index'])
 Route::get('analytics/export', [AnalyticsController::class, 'export'])
     ->middleware(['auth', 'verified', 'admin'])
     ->name('analytics.export');
-
-Route::view('finance', 'finance')
-    ->middleware(['auth', 'verified', 'admin'])
-    ->name('finance');
-
-Route::view('settings', 'settings')
-    ->middleware(['auth', 'verified', 'admin'])
-    ->name('settings');
-
-Route::view('notifications', 'notifications')
-    ->middleware(['auth', 'verified', 'admin'])
-    ->name('notifications');
 
 Route::view('profile', 'profile')
     ->middleware(['auth', 'admin'])

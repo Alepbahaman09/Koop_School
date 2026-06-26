@@ -116,7 +116,13 @@ class DashboardController extends Controller
             $salesLabels[] = $date->format('d M');
         }
 
-        $orders = Order::with(['customer', 'orderItems.product'])
+        $orders = Order::query()
+            ->select(['id', 'order_number', 'customer_id', 'status', 'total_amount', 'created_at'])
+            ->with([
+                'customer:id,parent_name',
+                'orderItems:id,order_id,product_id,quantity',
+                'orderItems.product:id,name',
+            ])
             ->latest()
             ->take(5)
             ->get()

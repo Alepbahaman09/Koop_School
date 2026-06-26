@@ -10,7 +10,25 @@ class CustomerController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Customer::with(['orders' => fn ($query) => $query->latest()->limit(8)])
+        $query = Customer::query()
+            ->select([
+                'id',
+                'student_id',
+                'parent_name',
+                'student_name',
+                'email',
+                'phone',
+                'class',
+                'address',
+                'latitude',
+                'longitude',
+                'is_active',
+                'created_at',
+            ])
+            ->with(['orders' => fn ($query) => $query
+                ->select(['id', 'customer_id', 'order_number', 'status', 'payment_status', 'total_amount', 'created_at'])
+                ->latest()
+                ->limit(8)])
             ->withCount('orders')
             ->withSum(['orders as total_spent' => function ($query) {
                 $query->where('payment_status', 'Paid');
