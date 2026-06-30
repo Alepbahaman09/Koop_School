@@ -32,7 +32,7 @@
             <article class="flex items-start gap-4 p-5 hover:bg-slate-50">
                 <div class="grid h-12 w-12 shrink-0 place-items-center rounded-lg {{ $notification->read_at ? 'bg-slate-100 text-slate-400' : 'bg-indigo-50 text-indigo-600' }}">
                     <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="{{ $notification->type === 'order_created' ? 'M6 6h15l-1.5 9h-12L6 6Zm0 0L5 3H2m7 18h.01m9 0h.01' : 'M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Zm-8 12h4' }}" />
+                        <path d="{{ $notification->isOrderNotification() ? 'M6 6h15l-1.5 9h-12L6 6Zm0 0L5 3H2m7 18h.01m9 0h.01' : 'M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Zm-8 12h4' }}" />
                     </svg>
                 </div>
                 <div class="min-w-0 flex-1">

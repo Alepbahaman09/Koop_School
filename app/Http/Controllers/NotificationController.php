@@ -18,7 +18,7 @@ class NotificationController extends Controller
         }
 
         if ($filter === 'orders') {
-            $query->where('type', 'order_created');
+            $query->whereIn('type', ['order_created', 'order_received']);
         }
 
         $notifications = $query->simplePaginate(12)->withQueryString();
@@ -28,7 +28,7 @@ class NotificationController extends Controller
                 <<<'SQL'
                 COUNT(*) as total,
                 COUNT(CASE WHEN read_at IS NULL THEN 1 END) as unread,
-                COUNT(CASE WHEN type = 'order_created' THEN 1 END) as orders
+                COUNT(CASE WHEN type IN ('order_created', 'order_received') THEN 1 END) as orders
                 SQL
             )
             ->first());
@@ -53,12 +53,13 @@ class NotificationController extends Controller
 
     public function markRead(AdminNotification $notification)
     {
+        $destination = $notification->destinationUrl();
         $notification->update(['read_at' => now()]);
         Cache::forget('admin_notifications.unread_count');
         Cache::forget('admin_notifications.stats');
 
-        return $notification->link
-            ? redirect($notification->link)
+        return $destination
+            ? redirect($destination)
             : back()->with('success', 'Notification marked as read.');
     }
 }

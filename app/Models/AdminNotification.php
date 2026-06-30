@@ -49,4 +49,35 @@ class AdminNotification extends Model
 
         return $notification;
     }
+
+    public function isOrderNotification(): bool
+    {
+        return in_array($this->type, ['order_created', 'order_received'], true)
+            || (bool) preg_match('#^/orders/\d+$#', (string) $this->link);
+    }
+
+    public function destinationUrl(): ?string
+    {
+        if (! $this->isOrderNotification()) {
+            return $this->link;
+        }
+
+        $data = is_array($this->data) ? $this->data : [];
+        $orderNumber = $data['order_number'] ?? null;
+        $orderId = $data['order_id'] ?? null;
+
+        if (! $orderId && preg_match('#^/orders/(\d+)$#', (string) $this->link, $matches)) {
+            $orderId = $matches[1];
+        }
+
+        if (! $orderNumber && $orderId) {
+            $orderNumber = Order::query()->whereKey($orderId)->value('order_number');
+        }
+
+        return route(
+            'orders.index',
+            $orderNumber ? ['search' => $orderNumber] : [],
+            false,
+        );
+    }
 }
