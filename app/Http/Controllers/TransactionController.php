@@ -3,14 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Models\Payment;
-use App\Models\Order;
 use Illuminate\Http\Request;
 
 class TransactionController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Payment::with(['order.customer']);
+        $query = Payment::query()
+            ->select(['id', 'order_id', 'payment_reference', 'payment_method', 'amount', 'status', 'paid_at', 'created_at'])
+            ->with([
+                'order:id,order_number,customer_id,total_amount,payment_status',
+                'order.customer:id,parent_name,student_name',
+            ]);
 
         if ($request->status) {
             $query->where('status', $request->status);
@@ -29,7 +33,7 @@ class TransactionController extends Controller
             });
         }
 
-        $payments = $query->latest()->paginate(20);
+        $payments = $query->latest()->paginate(20)->withQueryString();
 
         return view('transactions.index', compact('payments'));
     }

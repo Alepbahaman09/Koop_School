@@ -4,12 +4,31 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class CustomerController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Customer::with(['orders' => fn ($query) => $query->latest()->limit(8)])
+        $query = Customer::query()
+            ->select([
+                'id',
+                'student_id',
+                'parent_name',
+                'student_name',
+                'email',
+                'phone',
+                'class',
+                'address',
+                'latitude',
+                'longitude',
+                'is_active',
+                'created_at',
+            ])
+            ->with(['orders' => fn ($query) => $query
+                ->select(['id', 'customer_id', 'order_number', 'status', 'payment_status', 'total_amount', 'created_at'])
+                ->latest()
+                ->limit(8)])
             ->withCount('orders')
             ->withSum(['orders as total_spent' => function ($query) {
                 $query->where('payment_status', 'Paid');
@@ -29,11 +48,25 @@ class CustomerController extends Controller
         }
 
         $customers = $query->latest()->paginate(20)->withQueryString();
+        $customerStats = Cache::remember('customers.stats', 30, fn () => (array) Customer::query()
+            ->toBase()
+            ->selectRaw(
+                <<<'SQL'
+                COUNT(*) as total,
+                COUNT(CASE WHEN is_active = true THEN 1 END) as active,
+                COUNT(CASE WHEN is_active = false THEN 1 END) as inactive,
+                COUNT(CASE WHEN EXISTS (
+                    SELECT 1 FROM orders WHERE orders.customer_id = customers.id
+                ) THEN 1 END) as with_orders
+                SQL
+            )
+            ->first());
+
         $stats = [
-            'total' => Customer::count(),
-            'active' => Customer::where('is_active', true)->count(),
-            'inactive' => Customer::where('is_active', false)->count(),
-            'with_orders' => Customer::has('orders')->count(),
+            'total' => (int) $customerStats['total'],
+            'active' => (int) $customerStats['active'],
+            'inactive' => (int) $customerStats['inactive'],
+            'with_orders' => (int) $customerStats['with_orders'],
         ];
 
         return view('users', compact('customers', 'stats'));

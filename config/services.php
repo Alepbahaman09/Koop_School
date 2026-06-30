@@ -28,6 +28,14 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'supabase' => [
+        'url' => env('SUPABASE_URL'),
+        'anon_key' => env('SUPABASE_ANON_KEY'),
+        'service_role_key' => env('SUPABASE_SERVICE_ROLE_KEY'),
+        'schema' => env('SUPABASE_DEFAULT_SCHEMA', 'public'),
+        'ca_bundle' => env('SUPABASE_CA_BUNDLE', storage_path('app/certs/cacert.pem')),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

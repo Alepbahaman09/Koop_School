@@ -2,19 +2,29 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\MobileDocument;
 use App\Models\Order;
 use App\Models\OrderStatusHistory;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class OrderController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Order::with(['customer', 'orderItems.product', 'payments', 'statusHistory' => function ($q) {
-            $q->latest()->with(['user', 'admin']);
-        }]);
+        $query = Order::query()
+            ->select(['id', 'order_number', 'customer_id', 'status', 'total_amount', 'payment_status', 'created_at'])
+            ->with([
+                'customer:id,parent_name,student_name,class,phone,email,address',
+                'orderItems:id,order_id,product_id,quantity,unit_price,subtotal',
+                'orderItems.product:id,name',
+                'statusHistory' => function ($q) {
+                    $q->select(['id', 'order_id', 'user_id', 'admin_id', 'status', 'created_at'])
+                        ->latest()
+                        ->with(['user:id,name', 'admin:id,name']);
+                },
+            ])
+            ->withSum(['payments as completed_payments_total' => fn ($q) => $q->where('status', 'Completed')], 'amount');
 
         if ($request->status) {
             $query->where('status', $request->status);
@@ -35,12 +45,25 @@ class OrderController extends Controller
         }
 
         $orders = $query->latest()->paginate(20)->withQueryString();
+        $orderStats = Cache::remember('orders.stats', 30, fn () => (array) Order::query()
+            ->toBase()
+            ->selectRaw(
+                <<<'SQL'
+                COUNT(*) as total,
+                COUNT(CASE WHEN status = 'Pending' THEN 1 END) as pending,
+                COUNT(CASE WHEN status IN ('Processing', 'Packed', 'Ready') THEN 1 END) as in_progress,
+                COUNT(CASE WHEN status = 'Completed' THEN 1 END) as completed,
+                COUNT(CASE WHEN status = 'Cancelled' THEN 1 END) as cancelled
+                SQL
+            )
+            ->first());
+
         $stats = [
-            'total' => Order::count(),
-            'pending' => Order::where('status', 'Pending')->count(),
-            'in_progress' => Order::whereIn('status', ['Processing', 'Packed', 'Ready'])->count(),
-            'completed' => Order::where('status', 'Completed')->count(),
-            'cancelled' => Order::where('status', 'Cancelled')->count(),
+            'total' => (int) $orderStats['total'],
+            'pending' => (int) $orderStats['pending'],
+            'in_progress' => (int) $orderStats['in_progress'],
+            'completed' => (int) $orderStats['completed'],
+            'cancelled' => (int) $orderStats['cancelled'],
         ];
 
         return view('orders', compact('orders', 'stats'));
@@ -56,7 +79,6 @@ class OrderController extends Controller
         try {
             DB::beginTransaction();
             $order->update(['status' => $validated['status']]);
-            $this->syncMobileOrderStatus($order);
 
             OrderStatusHistory::create([
                 'order_id' => $order->id,
@@ -74,20 +96,6 @@ class OrderController extends Controller
 
             return back()->with('error', 'Failed to update order status.');
         }
-    }
-
-    private function syncMobileOrderStatus(Order $order): void
-    {
-        $document = $order->source_document_path
-            ? MobileDocument::where('path', $order->source_document_path)->first()
-            : MobileDocument::where('data->orderNumber', $order->order_number)->first();
-        if (! $document) {
-            return;
-        }
-
-        $data = $document->data;
-        $data['orderStatus'] = $order->status;
-        $document->update(['data' => $data]);
     }
 
     public function destroy(Order $order)

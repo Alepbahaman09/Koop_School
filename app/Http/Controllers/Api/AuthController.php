@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
-use App\Models\MobileDocument;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -35,8 +34,8 @@ class AuthController extends Controller
                 'password' => $data['password'],
                 'username' => $data['username'],
                 'phone_number' => $data['phone_number'] ?? null,
-                'mobile_profile' => ['pinEnabled' => false],
             ]);
+            $user->mobileProfile()->create(['profile' => ['pinEnabled' => false]]);
             Customer::create([
                 'student_id' => 'APP-'.$user->id,
                 'parent_name' => $user->name,
@@ -136,7 +135,8 @@ class AuthController extends Controller
     {
         DB::transaction(function () use ($request) {
             $user = $request->user();
-            MobileDocument::where('path', 'like', "users/{$user->id}/%")->delete();
+            $user->apiTokens()->delete();
+            $user->cards()->delete();
             Customer::where('email', $user->email)->delete();
             $user->delete();
         });
