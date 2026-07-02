@@ -98,7 +98,51 @@
 
     <details class="w-fit">
         <summary class="cursor-pointer text-xs font-extrabold text-indigo-600">+ Add a new category</summary>
-        <form method="POST" action="{{ route('categories.store') }}" class="mt-2 flex gap-2">@csrf<input name="name" required placeholder="Category name" class="h-9 rounded-lg border-slate-200 text-xs"><input type="hidden" name="is_active" value="1"><button class="h-9 rounded-lg bg-indigo-600 px-4 text-xs font-extrabold text-white">Add</button></form>
+        <form method="POST" action="{{ route('categories.store') }}" enctype="multipart/form-data" class="mt-2 flex flex-wrap gap-2">
+            @csrf
+            <input name="name" required placeholder="Category name" class="h-9 rounded-lg border-slate-200 text-xs">
+            <input name="icon" type="file" accept="image/*" class="h-9 max-w-64 rounded-lg border border-slate-200 bg-white text-xs file:mr-2 file:h-9 file:border-0 file:bg-indigo-50 file:px-3 file:font-extrabold file:text-indigo-700">
+            <input type="hidden" name="is_active" value="1">
+            <button class="h-9 rounded-lg bg-indigo-600 px-4 text-xs font-extrabold text-white">Add</button>
+        </form>
+    </details>
+
+    <details class="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+        <summary class="cursor-pointer text-xs font-extrabold text-indigo-600">Manage category names and icons</summary>
+        <div class="mt-4 grid gap-3 md:grid-cols-2">
+            @foreach ($allCategories as $category)
+                <div class="rounded-xl border border-slate-200 p-3">
+                    <form method="POST" action="{{ route('categories.update', $category) }}" enctype="multipart/form-data" class="space-y-3">
+                        @csrf
+                        @method('PATCH')
+                        <div class="flex items-center gap-3">
+                            <div class="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-indigo-50">
+                                @if ($category->icon_url)
+                                    <img src="{{ $category->icon_url }}" alt="{{ $category->name }}" class="h-full w-full object-contain">
+                                @else
+                                    <span class="text-lg font-black text-indigo-500">{{ strtoupper(substr($category->name, 0, 1)) }}</span>
+                                @endif
+                            </div>
+                            <input name="name" required value="{{ $category->name }}" class="h-9 min-w-0 flex-1 rounded-lg border-slate-200 text-xs font-semibold">
+                        </div>
+                        <input name="description" value="{{ $category->description }}" placeholder="Description (optional)" class="h-9 w-full rounded-lg border-slate-200 text-xs">
+                        <input name="icon" type="file" accept="image/*" class="block w-full text-xs text-slate-500 file:mr-2 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:font-extrabold file:text-indigo-700">
+                        <div class="flex items-center justify-between gap-3">
+                            <label class="flex items-center gap-2 text-xs font-bold text-slate-600">
+                                <input name="is_active" value="1" type="checkbox" @checked($category->is_active) class="rounded border-slate-300 text-indigo-600">
+                                Visible in app
+                            </label>
+                            <button class="rounded-lg bg-slate-900 px-3 py-2 text-xs font-extrabold text-white">Save changes</button>
+                        </div>
+                    </form>
+                    <form method="POST" action="{{ route('categories.destroy', $category) }}" class="mt-2 text-right" onsubmit="return confirm('Delete this category?')">
+                        @csrf
+                        @method('DELETE')
+                        <button class="text-xs font-bold text-red-600">Delete category</button>
+                    </form>
+                </div>
+            @endforeach
+        </div>
     </details>
 </section>
 @endsection

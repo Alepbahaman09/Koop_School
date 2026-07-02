@@ -34,6 +34,29 @@ class SupabaseClient
             ]);
     }
 
+    public function storage(bool $useServiceRole = false): PendingRequest
+    {
+        $url = rtrim((string) config('services.supabase.url'), '/');
+        $key = $useServiceRole
+            ? config('services.supabase.service_role_key')
+            : config('services.supabase.anon_key');
+
+        if ($url === '' || ! $key) {
+            throw new RuntimeException('Supabase URL and API key must be configured.');
+        }
+
+        $caBundle = $this->caBundlePath();
+
+        return Http::baseUrl($url.'/storage/v1')
+            ->when($caBundle !== null, fn (PendingRequest $request) => $request->withOptions([
+                'verify' => $caBundle,
+            ]))
+            ->withHeaders([
+                'apikey' => $key,
+                'Authorization' => 'Bearer '.$key,
+            ]);
+    }
+
     private function caBundlePath(): ?string
     {
         $caBundle = config('services.supabase.ca_bundle');
