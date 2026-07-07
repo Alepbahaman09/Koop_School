@@ -1,29 +1,31 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Profile') }}
-        </h2>
-    </x-slot>
+@extends('layouts.app')
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-            <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
-                <div class="max-w-xl">
-                    <livewire:profile.update-profile-information-form />
-                </div>
-            </div>
+@section('title', 'Profile')
+@section('page-title', 'Profile')
 
-            <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
-                <div class="max-w-xl">
-                    <livewire:profile.update-password-form />
-                </div>
-            </div>
+@section('content')
+    <section class="rounded-lg bg-white p-5 shadow-sm ring-1 ring-slate-100">
+        <h1 class="text-xl font-extrabold text-slate-900">Profile</h1>
+        <p class="mt-1 text-sm font-medium text-slate-500">Manage your account information, password, and account access.</p>
+    </section>
 
-            <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
-                <div class="max-w-xl">
-                    <livewire:profile.delete-user-form />
-                </div>
+    <div class="mx-auto max-w-4xl space-y-6">
+        <section class="rounded-lg bg-white p-6 shadow-sm ring-1 ring-slate-100 sm:p-8">
+            <div class="max-w-xl">
+                <livewire:profile.update-profile-information-form />
             </div>
-        </div>
+        </section>
+
+        <section class="rounded-lg bg-white p-6 shadow-sm ring-1 ring-slate-100 sm:p-8">
+            <div class="max-w-xl">
+                <livewire:profile.update-password-form />
+            </div>
+        </section>
+
+        <section class="rounded-lg bg-white p-6 shadow-sm ring-1 ring-slate-100 sm:p-8">
+            <div class="max-w-xl">
+                <livewire:profile.delete-user-form />
+            </div>
+        </section>
     </div>
-</x-app-layout>
+@endsection
