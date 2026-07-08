@@ -19,6 +19,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'api.token' => ApiTokenMiddleware::class,
             'admin' => EnsureAdmin::class,
         ]);
+
+        $middleware->trustProxies(at: '*');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

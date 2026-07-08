@@ -27,6 +27,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if ($this->app->environment('production') || str_starts_with(config('app.url', ''), 'https://')) {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
+        }
+
         RateLimiter::for('api-auth', function (Request $request) {
             return Limit::perMinute(10)->by(strtolower((string) $request->input('email')).'|'.$request->ip());
         });

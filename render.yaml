@@ -8,6 +8,8 @@ services:
         value: production
       - key: APP_DEBUG
         value: "false"
+      - key: APP_URL
+        sync: false # Set to your Render custom domain or .onrender.com URL (e.g., https://your-app.onrender.com)
       - key: APP_KEY
         generateValue: true # Render will generate a random key, but for Laravel it should be base64:32bytes. User can also manually provide a secure Laravel key.
       - key: LOG_CHANNEL
