@@ -19,7 +19,6 @@
 .phpunit.result.cache
 Dockerfile
 .dockerignore
-docker/
 render.yaml
 npm-debug.log
 yarn-error.log
