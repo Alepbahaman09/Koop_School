@@ -7,7 +7,7 @@ COPY . .
 RUN npm run build
 
 # Stage 2: Production PHP environment
-FROM php:8.3-apache
+FROM php:8.4-apache
 
 # Set environment variables
 ENV PORT=80
