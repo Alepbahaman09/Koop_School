@@ -1,7 +1,6 @@
 .git
 .github
 .env
-.env.example
 .editorconfig
 .styleci.yml
 /node_modules
