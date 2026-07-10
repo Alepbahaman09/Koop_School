@@ -36,15 +36,18 @@ class AuthController extends Controller
                 'phone_number' => $data['phone_number'] ?? null,
             ]);
             $user->mobileProfile()->create(['profile' => ['pinEnabled' => false]]);
-            Customer::create([
-                'student_id' => 'APP-'.$user->id,
-                'parent_name' => $user->name,
-                'student_name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone_number ?? '-',
-                'class' => '-',
-                'address' => '-',
-            ]);
+            Customer::updateOrCreate(
+                ['email' => $user->email],
+                [
+                    'student_id' => 'APP-'.$user->id,
+                    'parent_name' => $user->username ?? $user->name,
+                    'student_name' => $user->username ?? $user->name,
+                    'email' => $user->email,
+                    'phone' => $user->phone_number ?? '-',
+                    'class' => '-',
+                    'address' => '-',
+                ]
+            );
 
             return $user;
         });

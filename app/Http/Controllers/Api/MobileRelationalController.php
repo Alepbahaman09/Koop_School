@@ -598,10 +598,16 @@ class MobileRelationalController extends Controller
 
     private function syncCustomerProfile(User $user): void
     {
-        Customer::where('email', $user->email)->update([
-            'parent_name' => $user->username ?: $user->name,
-            'student_name' => $user->username ?: $user->name,
-            'phone' => $user->phone_number ?: '-',
-        ]);
+        Customer::updateOrCreate(
+            ['email' => $user->email],
+            [
+                'student_id' => 'APP-'.$user->id,
+                'parent_name' => $user->username ?: $user->name,
+                'student_name' => $user->username ?: $user->name,
+                'phone' => $user->phone_number ?: '-',
+                'class' => '-',
+                'address' => '-',
+            ]
+        );
     }
 }

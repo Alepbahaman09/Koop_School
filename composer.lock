@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "373d3a2ca119fa08fccc1e5217fff38e",
+    "content-hash": "62e379f16b7b61dff55a9fc81e4cc70e",
     "packages": [
         {
             "name": "brick/math",
@@ -1121,20 +1121,20 @@
         },
         {
             "name": "laravel/framework",
-            "version": "v13.13.0",
+            "version": "v13.19.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/laravel/framework.git",
-                "reference": "1daa6d3b4defe46976ccfa4fb0a7ab62717712a2"
+                "reference": "514502b38e11bd676ecf83b271c9452cc7500f16"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/laravel/framework/zipball/1daa6d3b4defe46976ccfa4fb0a7ab62717712a2",
-                "reference": "1daa6d3b4defe46976ccfa4fb0a7ab62717712a2",
+                "url": "https://api.github.com/repos/laravel/framework/zipball/514502b38e11bd676ecf83b271c9452cc7500f16",
+                "reference": "514502b38e11bd676ecf83b271c9452cc7500f16",
                 "shasum": ""
             },
             "require": {
-                "brick/math": "^0.14.2 || ^0.15 || ^0.16 || ^0.17",
+                "brick/math": "^0.14.2 || ^0.15 || ^0.16 || ^0.17 || ^0.18",
                 "composer-runtime-api": "^2.2",
                 "doctrine/inflector": "^2.0.5",
                 "dragonmantank/cron-expression": "^3.4",
@@ -1341,7 +1341,7 @@
                 "issues": "https://github.com/laravel/framework/issues",
                 "source": "https://github.com/laravel/framework"
             },
-            "time": "2026-06-02T14:28:17+00:00"
+            "time": "2026-07-07T14:13:33+00:00"
         },
         {
             "name": "laravel/prompts",

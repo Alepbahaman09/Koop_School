@@ -22,7 +22,6 @@
     <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <h1 class="text-xl font-extrabold">Admin Dashboard</h1>
-            <p class="mt-1 text-sm font-medium text-slate-500">Live database overview for the school cooperative system.</p>
         </div>
         <p class="text-sm font-bold text-slate-400">Updated {{ now()->format('d M Y, h:i A') }}</p>
     </div>

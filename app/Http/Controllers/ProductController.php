@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\InventoryTransaction;
 use App\Models\Product;
+use App\Services\SupabaseStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -12,6 +13,10 @@ use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
+    private const IMAGE_BUCKET = 'product-images';
+
+    public function __construct(private readonly SupabaseStorage $storage) {}
+
     public function index(Request $request)
     {
         $query = Product::query()
@@ -44,6 +49,8 @@ class ProductController extends Controller
         $categories = Category::where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name']);
+        $allCategories = Category::orderBy('name')
+            ->get(['id', 'name', 'description', 'icon_url', 'is_active']);
         $productStats = Cache::remember('products.stats', 30, fn () => (array) Product::query()
             ->toBase()
             ->selectRaw(
@@ -65,7 +72,7 @@ class ProductController extends Controller
             'inventory_value' => (float) $productStats['inventory_value'],
         ];
 
-        return view('products', compact('products', 'categories', 'stats'));
+        return view('products', compact('products', 'categories', 'allCategories', 'stats'));
     }
 
     public function create()
@@ -88,7 +95,11 @@ class ProductController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            $validated['image'] = $request->file('image')->store('products', 'public');
+            $validated['image'] = $this->storage->uploadImage(
+                $request->file('image'),
+                self::IMAGE_BUCKET,
+                'products',
+            );
         }
 
         $validated['is_active'] = $request->boolean('is_active');
@@ -136,7 +147,11 @@ class ProductController extends Controller
         $oldStock = $product->stock_quantity;
 
         if ($request->hasFile('image')) {
-            $validated['image'] = $request->file('image')->store('products', 'public');
+            $validated['image'] = $this->storage->uploadImage(
+                $request->file('image'),
+                self::IMAGE_BUCKET,
+                'products',
+            );
         }
 
         DB::transaction(function () use ($product, $validated, $oldStock) {
@@ -156,7 +171,7 @@ class ProductController extends Controller
         });
 
         if ($request->hasFile('image') && $oldImage) {
-            Storage::disk('public')->delete($oldImage);
+            $this->deleteImage($oldImage);
         }
 
         return redirect()->route('products.index')->with('success', 'Product updated successfully.');
@@ -171,11 +186,25 @@ class ProductController extends Controller
         }
 
         if ($product->image) {
-            Storage::disk('public')->delete($product->image);
+            $this->deleteImage($product->image);
         }
 
         $product->delete();
 
         return redirect()->route('products.index')->with('success', 'Product deleted successfully.');
+    }
+
+    private function deleteImage(string $image): void
+    {
+        if (str_contains($image, '/storage/v1/object/public/'.self::IMAGE_BUCKET.'/')) {
+            $this->storage->deletePublicFile($image, self::IMAGE_BUCKET);
+
+            return;
+        }
+
+        // Remove images created by the previous local-storage implementation.
+        if (! str_starts_with($image, 'http://') && ! str_starts_with($image, 'https://')) {
+            Storage::disk('public')->delete($image);
+        }
     }
 }
