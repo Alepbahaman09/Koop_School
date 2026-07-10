@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\UsesUtcDatabaseTimestamps;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 
 class AdminNotification extends Model
 {
+    use UsesUtcDatabaseTimestamps;
+
     protected $fillable = [
         'type',
         'title',
