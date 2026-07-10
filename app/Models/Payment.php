@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\UsesUtcDatabaseTimestamps;
 use Illuminate\Database\Eloquent\Model;
 
 class Payment extends Model
 {
+    use UsesUtcDatabaseTimestamps;
+
     protected $fillable = ['order_id', 'payment_reference', 'payment_method', 'amount', 'status', 'paid_at', 'notes'];
 
     protected $casts = ['paid_at' => 'datetime'];

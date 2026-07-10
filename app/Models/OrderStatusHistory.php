@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\UsesUtcDatabaseTimestamps;
 use Illuminate\Database\Eloquent\Model;
 
 class OrderStatusHistory extends Model
 {
+    use UsesUtcDatabaseTimestamps;
+
     protected $fillable = ['order_id', 'user_id', 'admin_id', 'status', 'notes'];
 
     public function order()
