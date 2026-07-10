@@ -3,13 +3,37 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class CustomerController extends Controller
 {
     public function index(Request $request)
     {
+        DB::transaction(function () {
+            $users = User::query()
+                ->select(['id', 'email', 'username', 'phone_number'])
+                ->get();
+
+            foreach ($users as $user) {
+                Customer::updateOrCreate(
+                    ['email' => $user->email],
+                    [
+                        'student_id' => 'APP-'.$user->id,
+                        'parent_name' => $user->username ?? $user->name,
+                        'student_name' => $user->username ?? $user->name,
+                        'email' => $user->email,
+                        'phone' => $user->phone_number ?? '-',
+                        'class' => '-',
+                        'address' => '-',
+                        'is_active' => true,
+                    ]
+                );
+            }
+        });
+
         $query = Customer::query()
             ->select([
                 'id',
