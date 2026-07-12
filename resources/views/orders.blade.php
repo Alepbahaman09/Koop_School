@@ -88,7 +88,12 @@
                     <td class="py-4 pr-4 font-semibold text-slate-600">{{ $order->orderItems->sum('quantity') }} item(s)</td>
                     <td class="py-4 pr-4 font-extrabold">RM {{ number_format($order->total_amount, 2) }}</td>
                     <td class="py-4 pr-4">
-                        <span class="rounded-full px-3 py-1 text-xs font-extrabold {{ $order->payment_status === 'Paid' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600' }}">{{ $order->payment_status }}</span>
+                        <div class="flex items-center gap-2">
+                            <span class="rounded-full px-3 py-1 text-xs font-extrabold {{ $order->payment_status === 'Paid' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600' }}">{{ $order->payment_status }}</span>
+                            @if ($order->payment_status !== 'Paid')
+                                <a href="{{ route('orders.pay', $order) }}" class="rounded bg-indigo-600 px-2 py-0.5 text-[10px] font-bold text-white hover:bg-indigo-700 transition-colors" title="Collect Payment">Pay</a>
+                            @endif
+                        </div>
                     </td>
                     <td class="py-4 pr-4"><span class="rounded-full px-3 py-1 text-xs font-extrabold {{ $statusClass[$order->status] ?? 'bg-slate-100 text-slate-600' }}">{{ $order->status }}</span></td>
                     <td class="py-4 text-right">
@@ -155,6 +160,13 @@
                                             <p>Total: <span class="font-extrabold">RM {{ number_format($order->total_amount, 2) }}</span></p>
                                             <p>Paid: <span class="font-extrabold">RM {{ number_format($order->completed_payments_total ?? 0, 2) }}</span></p>
                                             <p>Status: <span class="font-extrabold">{{ $order->payment_status }}</span></p>
+                                            @if ($order->payment_status !== 'Paid')
+                                                <div class="mt-3">
+                                                    <a href="{{ route('orders.pay', $order) }}" class="inline-flex h-9 w-full items-center justify-center rounded-lg bg-indigo-600 px-4 text-xs font-bold text-white hover:bg-indigo-700 transition-colors">
+                                                        Collect Payment (NFC / Cash)
+                                                    </a>
+                                                </div>
+                                            @endif
                                         </div>
                                     </div>
                                     <div class="rounded-lg ring-1 ring-slate-100">

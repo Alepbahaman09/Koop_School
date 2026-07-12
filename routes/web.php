@@ -38,6 +38,9 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
 
     Route::get('transactions', [TransactionController::class, 'index'])->name('transactions.index');
     Route::get('payments', [PaymentController::class, 'index'])->name('payment.index');
+    Route::get('orders/{order}/pay', [PaymentController::class, 'checkout'])->name('orders.pay');
+    Route::post('orders/{order}/pay/nfc', [PaymentController::class, 'processNfcPayment'])->name('orders.pay.nfc');
+    Route::post('orders/{order}/pay/cash', [PaymentController::class, 'processCashPayment'])->name('orders.pay.cash');
 
     Route::get('finance', [FinanceController::class, 'index'])->name('finance');
     Route::get('finance/export', [FinanceController::class, 'export'])->name('finance.export');
