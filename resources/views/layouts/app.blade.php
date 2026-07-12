@@ -6,6 +6,7 @@
     );
     $navItems = [
         ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'M3 13h8V3H3v10Zm10 8h8V3h-8v18ZM3 21h8v-6H3v6Z'],
+        ['label' => 'Payments', 'route' => 'payments', 'icon' => 'M3 13h8V3H3v10Zm10 8h8V3h-8v18ZM3 21h8v-6H3v6Z'],
         ['label' => 'Orders', 'route' => 'orders.index', 'icon' => 'M6 6h15l-1.5 9h-12L6 6Zm0 0L5 3H2m7 18a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm9 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z'],
         ['label' => 'Products', 'route' => 'products.index', 'icon' => 'M20 7 12 3 4 7l8 4 8-4Zm0 0v10l-8 4m8-14-8 4m0 10-8-4V7m8 14V11'],
         ['label' => 'Users', 'route' => 'users.index', 'icon' => 'M17 20h5v-2a4 4 0 0 0-4-4h-1M9 20H4v-2a4 4 0 0 1 4-4h1m8-4a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM9 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z'],
