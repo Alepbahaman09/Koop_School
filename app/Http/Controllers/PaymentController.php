@@ -14,26 +14,33 @@ class PaymentController extends Controller
     public function index(Request $request)
     {
         $orderId = $request->query('order_id');
-        
+
+        // All unpaid/partial orders, oldest first (FIFO queue)
+        $queue = Order::whereIn('payment_status', ['Unpaid', 'Partial'])
+            ->with([
+                'customer:id,student_id,student_name,parent_name,class',
+                'orderItems:id,order_id,product_id,quantity,unit_price,subtotal',
+                'orderItems.product:id,name',
+            ])
+            ->oldest()
+            ->take(20)
+            ->get();
+
+        // Active order: explicit pick or head of queue
         if ($orderId) {
-            $order = Order::with(['customer', 'orderItems.product'])->find($orderId);
+            $order = $queue->firstWhere('id', (int) $orderId)
+                       ?? Order::with(['customer', 'orderItems.product'])->find($orderId);
         } else {
-            // Find the latest pending/unpaid order
-            $order = Order::where('payment_status', '!=', 'Paid')
-                ->latest()
-                ->first();
+            $order = $queue->first();
         }
 
-        if (!$order) {
-            $pendingOrders = Order::where('payment_status', '!=', 'Paid')
-                ->with('customer')
-                ->latest()
-                ->take(10)
-                ->get();
-            return view('payment.no_pending', compact('pendingOrders'));
-        }
+        // Queue excluding the active order
+        $waitingQueue = $order ? $queue->where('id', '!=', $order->id)->values() : $queue;
 
-        return $this->checkout($order);
+        // Cards for NFC simulator
+        $cards = Card::where('is_frozen', false)->get();
+
+        return view('payment.terminal', compact('order', 'waitingQueue', 'cards'));
     }
 
     public function checkout(Order $order)
