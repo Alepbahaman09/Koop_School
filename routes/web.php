@@ -10,6 +10,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\PaymentController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login');
@@ -36,6 +37,7 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('users/{customer}', [CustomerController::class, 'show'])->name('users.show');
 
     Route::get('transactions', [TransactionController::class, 'index'])->name('transactions.index');
+    Route::get('payments', [PaymentController::class, 'index'])->name('payments');
 
     Route::get('finance', [FinanceController::class, 'index'])->name('finance');
     Route::get('finance/export', [FinanceController::class, 'export'])->name('finance.export');

@@ -47,17 +47,17 @@
             </div>
             <div>
                 <h3 class="font-semibold text-slate-900">{{ $payment->payment_method }}</h3>
-                <p class="text-sm text-slate-500">{{ $payment->transaction_id }}</p>
+                <p class="text-sm text-slate-500">{{ $payment->payment_reference }}</p>
             </div>
             </div>
             <div class="space-y-2">
             <div class="flex justify-between">
                 <span class="text-sm text-slate-500">Amount</span>
-                <span class="font-semibold">{{ $payment->amount }}</span>
+                <span class="font-semibold">RM {{ number_format($payment->amount, 2) }}</span>
             </div>
             <div class="flex justify-between">
                 <span class="text-sm text-slate-500">Fee</span>
-                <span class="font-semibold">{{ $payment->fee }}</span>
+                <span class="font-semibold">RM 0.00</span>
             </div>
             </div>
         </div>
