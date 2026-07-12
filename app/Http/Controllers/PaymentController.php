@@ -11,11 +11,29 @@ use Illuminate\Support\Facades\DB;
 
 class PaymentController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $payments = Payment::latest()->get();
+        $orderId = $request->query('order_id');
+        
+        if ($orderId) {
+            $order = Order::with(['customer', 'orderItems.product'])->find($orderId);
+        } else {
+            // Find the latest pending/unpaid order
+            $order = Order::where('payment_status', '!=', 'Paid')
+                ->latest()
+                ->first();
+        }
 
-        return view('payment', compact('payments'));
+        if (!$order) {
+            $pendingOrders = Order::where('payment_status', '!=', 'Paid')
+                ->with('customer')
+                ->latest()
+                ->take(10)
+                ->get();
+            return view('payment.no_pending', compact('pendingOrders'));
+        }
+
+        return $this->checkout($order);
     }
 
     public function checkout(Order $order)
