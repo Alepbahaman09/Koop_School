@@ -37,7 +37,7 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('users/{customer}', [CustomerController::class, 'show'])->name('users.show');
 
     Route::get('transactions', [TransactionController::class, 'index'])->name('transactions.index');
-    Route::get('payments', [PaymentController::class, 'index'])->name('payments');
+    Route::get('payments', [PaymentController::class, 'index'])->name('payment.index');
 
     Route::get('finance', [FinanceController::class, 'index'])->name('finance');
     Route::get('finance/export', [FinanceController::class, 'export'])->name('finance.export');
