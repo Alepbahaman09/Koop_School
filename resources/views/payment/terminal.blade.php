@@ -787,12 +787,17 @@ function renderCart() {
     const frag = document.createDocumentFragment();
     cart.forEach(({ product: p, qty }) => {
         const lineTotal = (p.price * qty).toFixed(2);
+        const fallback = CAT_EMOJI[p.category] ?? '🛒';
+        const imgHtml = p.image
+            ? `<img src="${p.image}" alt="${p.name}" class="w-full h-full object-cover rounded-xl" onerror="this.parentElement.innerHTML='${fallback}'">`
+            : fallback;
+
         const div = document.createElement('div');
         div.className = 'cart-item-row py-3 border-b border-slate-100 last:border-0';
         div.dataset.id = p.id;
         div.innerHTML = `
         <div class="flex items-start gap-3">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0" style="background:${catColor(p.category)};">${p.emoji}</div>
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0" style="background:${catColor(p.category)};">${imgHtml}</div>
             <div class="flex-1 min-w-0">
                 <div class="font-bold text-slate-800 text-sm leading-tight truncate">${p.name}</div>
                 <div class="text-xs text-slate-400 font-semibold">RM${p.price.toFixed(2)} each</div>
