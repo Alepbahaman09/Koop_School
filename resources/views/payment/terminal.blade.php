@@ -197,6 +197,32 @@
         .search-wrap svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: #94a3b8; pointer-events: none; }
         .search-input { width: 100%; padding: 11px 14px 11px 42px; border-radius: 12px; border: 1.5px solid #e2e8f0; font-size: 14px; font-family: inherit; background: #fff; outline: none; transition: border-color .12s; }
         .search-input:focus { border-color: #2563eb; }
+
+        /* ── Pop-out button ── */
+        .popout-btn {
+            display: flex; align-items: center; gap: 6px;
+            padding: 7px 14px; border-radius: 11px;
+            border: 1.5px solid #e2e8f0; background: #f8fafc;
+            font-size: 12px; font-weight: 700; color: #475569;
+            cursor: pointer; transition: all .15s; font-family: inherit;
+            white-space: nowrap;
+        }
+        .popout-btn:hover { background: #eff6ff; border-color: #93c5fd; color: #2563eb; }
+        .popout-btn.docked { background: #eff6ff; border-color: #2563eb; color: #2563eb; }
+        .popout-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+        /* ── Docked-window notice banner ── */
+        #docked-banner {
+            display: none;
+            position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+            background: linear-gradient(90deg,#2563eb,#1d4ed8);
+            color: #fff; text-align: center;
+            font-size: 12px; font-weight: 700; padding: 5px 12px;
+            letter-spacing: .03em;
+        }
+        body.is-docked-window #docked-banner { display: block; }
+        body.is-docked-window header { top: 30px; }
+        body.is-docked-window .pos-grid { height: calc(100vh - 90px); margin-top: 30px; }
     </style>
 </head>
 <body>
@@ -221,6 +247,14 @@
             <span id="live-clock" class="text-sm font-bold text-slate-700 tabular-nums">--:--</span>
         </div>
 
+        {{-- Pop-out / Dock button --}}
+        <button id="popout-btn" class="popout-btn" onclick="popOutWindow()" title="Open in a separate window — drag to another monitor">
+            <svg id="popout-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+            </svg>
+            <span id="popout-label">Pop Out</span>
+        </button>
+
         {{-- Order History --}}
         <button onclick="openHistoryModal()" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl px-4 py-2 text-sm font-700 transition-colors" style="font-weight:700;">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -235,6 +269,9 @@
         </div>
     </div>
 </header>
+
+{{-- Docked-window notice (only visible when running as a pop-out) --}}
+<div id="docked-banner">📺 Running on external display — Cashier Terminal</div>
 
 {{-- ══════════ MAIN POS GRID ══════════ --}}
 <main class="pos-grid">
@@ -942,6 +979,99 @@ function toast(msg) {
     clearTimeout(_toastTimer);
     _toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
 }
+
+// ─────────────────────────────────────────────
+// POP-OUT / DOCK TO MONITOR
+// ─────────────────────────────────────────────
+let _popWin = null;
+
+function popOutWindow() {
+    const btn   = document.getElementById('popout-btn');
+    const label = document.getElementById('popout-label');
+    const icon  = document.getElementById('popout-icon');
+
+    // If already open, close / bring to front
+    if (_popWin && !_popWin.closed) {
+        _popWin.close();
+        _popWin = null;
+        _restorePopoutBtn(btn, label, icon);
+        return;
+    }
+
+    // Detect available screens (Screen Capture API, best-effort)
+    const sw = window.screen.availWidth;
+    const sh = window.screen.availHeight;
+
+    // Try to open on a second monitor by offsetting by primary screen width
+    // If there's only one screen this will just open a large popup on screen 1
+    const secondary = window.screen.width; // left edge of secondary (heuristic)
+    const winW  = Math.min(1400, sw);
+    const winH  = sh;
+    const left  = secondary;  // opens starting at right edge of primary monitor
+    const top   = 0;
+
+    const features = [
+        `width=${winW}`,
+        `height=${winH}`,
+        `left=${left}`,
+        `top=${top}`,
+        'resizable=yes',
+        'scrollbars=no',
+        'status=no',
+        'toolbar=no',
+        'menubar=no',
+        'location=no',
+    ].join(',');
+
+    _popWin = window.open(window.location.href + '?popout=1', 'CashierTerminal', features);
+
+    if (!_popWin) {
+        toast('⚠️ Pop-up blocked! Allow pop-ups for this site.');
+        return;
+    }
+
+    // Mark the child window so it shows the docked banner
+    _popWin.addEventListener('load', () => {
+        try {
+            _popWin.document.body.classList.add('is-docked-window');
+            // Hide the pop-out button inside the child window (no nesting)
+            const childBtn = _popWin.document.getElementById('popout-btn');
+            if (childBtn) childBtn.style.display = 'none';
+        } catch(e) { /* cross-origin guard */ }
+    });
+
+    // Update parent button state
+    btn.classList.add('docked');
+    label.textContent = 'Close External';
+    icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>`;
+
+    // Watch for child window close
+    const watcher = setInterval(() => {
+        if (_popWin && _popWin.closed) {
+            clearInterval(watcher);
+            _popWin = null;
+            _restorePopoutBtn(btn, label, icon);
+        }
+    }, 800);
+
+    toast('📺 Terminal opened on external display!');
+}
+
+function _restorePopoutBtn(btn, label, icon) {
+    btn.classList.remove('docked');
+    label.textContent = 'Pop Out';
+    icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>`;
+    toast('📺 External window closed.');
+}
+
+// If this IS the popped-out window, apply the docked class immediately
+(function() {
+    if (new URLSearchParams(window.location.search).get('popout') === '1') {
+        document.body.classList.add('is-docked-window');
+        const btn = document.getElementById('popout-btn');
+        if (btn) btn.style.display = 'none';
+    }
+})();
 
 // ─────────────────────────────────────────────
 // INIT
