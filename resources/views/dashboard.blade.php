@@ -57,7 +57,7 @@
             <div class="flex flex-col justify-between pb-8 text-right text-xs font-bold text-slate-300">
                 <span>Max</span><span>75%</span><span>50%</span><span>25%</span><span>0</span>
             </div>
-            <div class="relative h-full">
+            <div class="relative">
                 <div class="absolute inset-x-0 top-0 h-px bg-slate-100"></div>
                 <div class="absolute inset-x-0 top-1/4 h-px bg-slate-100"></div>
                 <div class="absolute inset-x-0 top-1/2 h-px bg-slate-100"></div>
@@ -66,7 +66,7 @@
                     @foreach ($salesBars as $index => $amount)
                         @php($height = $maxSale > 0 ? max(8, ($amount / $maxSale) * 100) : 8)
                         <div class="flex min-w-0 flex-1 flex-col items-center gap-2">
-                            <div class="w-full max-w-[40px] rounded-t-lg bg-indigo-600" style="height: {{ $height }}%" title="RM {{ number_format($amount, 2) }}"></div>
+                            <div class="w-full max-w-10 rounded-t-lg bg-indigo-600" @style(["height: {$height}%"]) title="RM {{ number_format($amount, 2) }}"></div>
                             <span class="text-[11px] font-bold text-slate-300">{{ $salesLabels[$index] }}</span>
                         </div>
                     @endforeach
