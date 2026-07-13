@@ -34,7 +34,7 @@ class MobileRelationalController extends Controller
         $limit = $data['limit'] ?? 1000;
 
         if ($collection === 'items') {
-            $products = Product::with('category')->where('is_active', true);
+            $products = Product::with('category');
             if (! empty($data['field']) && array_key_exists('equals', $data) && in_array($data['field'], ['name', 'sku'], true)) {
                 $products->where($data['field'], $data['equals']);
             }
@@ -246,8 +246,8 @@ class MobileRelationalController extends Controller
         $requestedItems = collect($data['items'] ?? []);
         $items = $requestedItems->map(function ($item) {
             $product = isset($item['product_id']) || isset($item['id'])
-                ? Product::where('is_active', true)->lockForUpdate()->find($item['product_id'] ?? $item['id'])
-                : Product::where('is_active', true)->where('name', $item['name'] ?? '')->lockForUpdate()->first();
+                ? Product::lockForUpdate()->find($item['product_id'] ?? $item['id'])
+                : Product::where('name', $item['name'] ?? '')->lockForUpdate()->first();
 
             return $product ? ['product' => $product, 'quantity' => max(1, (int) ($item['quantity'] ?? 1))] : null;
         })->filter()->values();
@@ -273,7 +273,7 @@ class MobileRelationalController extends Controller
             'mobile_reference' => $path,
             'customer_id' => $customer->id,
             'user_id' => $user->id,
-            'status' => 'Pending',
+            'status' => Order::DEFAULT_STATUS,
             'subtotal' => $subtotal,
             'tax' => 0,
             'discount' => 0,

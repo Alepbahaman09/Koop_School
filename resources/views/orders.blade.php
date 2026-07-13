@@ -7,12 +7,9 @@
 @include('partials.admin-alerts')
 
 @php
-    $statuses = ['Pending', 'Processing', 'Packed', 'Ready', 'Completed', 'Cancelled'];
     $paymentStatuses = ['Unpaid', 'Partial', 'Paid', 'Refunded'];
     $statusClass = [
-        'Pending' => 'bg-amber-50 text-amber-700',
         'Processing' => 'bg-sky-50 text-sky-700',
-        'Packed' => 'bg-indigo-50 text-indigo-700',
         'Ready' => 'bg-violet-50 text-violet-700',
         'Completed' => 'bg-emerald-50 text-emerald-700',
         'Cancelled' => 'bg-rose-50 text-rose-700',
@@ -26,17 +23,16 @@
     </div>
 </section>
 
-<section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+<section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
     @foreach ([
-        ['Total Orders', $stats['total'], 'text-indigo-600'],
-        ['Pending', $stats['pending'], 'text-amber-600'],
-        ['In Progress', $stats['in_progress'], 'text-sky-600'],
-        ['Completed', $stats['completed'], 'text-emerald-600'],
-        ['Cancelled', $stats['cancelled'], 'text-rose-600'],
-    ] as [$label, $value, $tone])
+        ['Total Orders', 'total', $stats['total'], 'text-indigo-600'],
+        ['In Progress', 'in_progress', $stats['in_progress'], 'text-sky-600'],
+        ['Completed', 'completed', $stats['completed'], 'text-emerald-600'],
+        ['Cancelled', 'cancelled', $stats['cancelled'], 'text-rose-600'],
+    ] as [$label, $key, $value, $tone])
         <article class="rounded-lg bg-white p-5 shadow-sm ring-1 ring-slate-100">
             <p class="text-sm font-bold text-slate-400">{{ $label }}</p>
-            <p class="mt-2 text-2xl font-extrabold {{ $tone }}">{{ number_format($value) }}</p>
+            <p data-order-stat="{{ $key }}" class="mt-2 text-2xl font-extrabold {{ $tone }}">{{ number_format($value) }}</p>
         </article>
     @endforeach
 </section>
@@ -76,7 +72,7 @@
             </tr></thead>
             <tbody class="divide-y divide-slate-100">
             @forelse ($orders as $order)
-                <tr class="align-top">
+                <tr data-order-row="{{ $order->id }}" class="align-top">
                     <td class="py-4 pr-4">
                         <p class="font-extrabold text-slate-900">{{ $order->order_number }}</p>
                         <p class="text-xs font-bold text-slate-400">{{ $order->created_at->format('d M Y, h:i A') }}</p>
@@ -88,9 +84,9 @@
                     <td class="py-4 pr-4 font-semibold text-slate-600">{{ $order->orderItems->sum('quantity') }} item(s)</td>
                     <td class="py-4 pr-4 font-extrabold">RM {{ number_format($order->total_amount, 2) }}</td>
                     <td class="py-4 pr-4">
-                        <span class="rounded-full px-3 py-1 text-xs font-extrabold {{ $order->payment_status === 'Paid' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600' }}">{{ $order->payment_status }}</span>
+                        <span data-order-payment class="rounded-full px-3 py-1 text-xs font-extrabold {{ $order->payment_status === 'Paid' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600' }}">{{ $order->payment_status }}</span>
                     </td>
-                    <td class="py-4 pr-4"><span class="rounded-full px-3 py-1 text-xs font-extrabold {{ $statusClass[$order->status] ?? 'bg-slate-100 text-slate-600' }}">{{ $order->status }}</span></td>
+                    <td class="py-4 pr-4"><span data-order-status class="rounded-full px-3 py-1 text-xs font-extrabold {{ $statusClass[$order->status] ?? 'bg-slate-100 text-slate-600' }}">{{ $order->status }}</span></td>
                     <td class="py-4 text-right">
                         <details>
                             <summary class="cursor-pointer list-none font-extrabold text-indigo-600">Manage</summary>
@@ -102,7 +98,7 @@
                                         <p class="text-sm font-medium text-slate-500">{{ $order->customer?->parent_name }} for {{ $order->customer?->student_name }}</p>
                                     </div>
                                     <div class="flex items-center gap-2">
-                                        <span class="rounded-full px-3 py-1 text-xs font-extrabold {{ $statusClass[$order->status] ?? 'bg-slate-100 text-slate-600' }}">{{ $order->status }}</span>
+                                        <span data-order-status class="rounded-full px-3 py-1 text-xs font-extrabold {{ $statusClass[$order->status] ?? 'bg-slate-100 text-slate-600' }}">{{ $order->status }}</span>
                                         <button type="button" onclick="this.closest('details').open=false" class="grid h-8 w-8 place-items-center rounded-lg bg-slate-100 font-extrabold text-slate-500" title="Close">&times;</button>
                                     </div>
                                 </div>
@@ -131,7 +127,7 @@
                                             <p class="mt-2 text-sm text-slate-500">{{ $order->customer?->address }}</p>
                                         </div>
 
-                                        <form method="POST" action="{{ route('orders.updateStatus', $order) }}" class="rounded-lg bg-slate-50 p-4">
+                                        <form data-status-form method="POST" action="{{ route('orders.updateStatus', $order) }}" class="rounded-lg bg-slate-50 p-4">
                                             @csrf @method('PATCH')
                                             <label class="text-xs font-extrabold uppercase text-slate-400">Update Status
                                                 <select name="status" class="mt-1 h-10 w-full rounded-lg border-slate-200 text-sm">
@@ -159,11 +155,11 @@
                                     </div>
                                     <div class="rounded-lg ring-1 ring-slate-100">
                                         <div class="border-b border-slate-100 p-3 text-sm font-extrabold text-slate-500">Status History</div>
-                                        <div class="max-h-44 overflow-y-auto p-3 text-sm">
+                                        <div data-status-history class="max-h-44 overflow-y-auto p-3 text-sm">
                                             @forelse ($order->statusHistory as $history)
                                                 <p class="mb-2"><span class="font-extrabold">{{ $history->status }}</span> by {{ $history->admin?->name ?? $history->user?->name ?? 'System' }} <span class="text-slate-400">{{ $history->created_at->diffForHumans() }}</span></p>
                                             @empty
-                                                <p class="font-semibold text-slate-400">No status updates yet.</p>
+                                                <p data-empty-history class="font-semibold text-slate-400">No status updates yet.</p>
                                             @endforelse
                                         </div>
                                     </div>
@@ -181,3 +177,152 @@
     <div class="mt-5">{{ $orders->links() }}</div>
 </section>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const snapshotUrl = @json(route('orders.snapshot'));
+    const statusClasses = @json($statusClass);
+    const statusToneClasses = Object.values(statusClasses).flatMap((classes) => classes.split(' '));
+    const defaultStatusClasses = ['bg-slate-100', 'text-slate-600'];
+    let snapshotLoading = false;
+
+    function updateStats(stats) {
+        Object.entries(stats).forEach(([key, value]) => {
+            const element = document.querySelector(`[data-order-stat="${key}"]`);
+            if (element) {
+                element.textContent = Number(value).toLocaleString();
+            }
+        });
+    }
+
+    function updateStatus(row, status) {
+        const classes = (statusClasses[status] ?? defaultStatusClasses.join(' ')).split(' ');
+
+        row.querySelectorAll('[data-order-status]').forEach((badge) => {
+            badge.classList.remove(...statusToneClasses, ...defaultStatusClasses);
+            badge.classList.add(...classes);
+            badge.textContent = status;
+        });
+
+        const select = row.querySelector('[data-status-form] select[name="status"]');
+        if (select) {
+            select.value = status;
+        }
+    }
+
+    function updatePayment(row, status) {
+        row.querySelectorAll('[data-order-payment]').forEach((badge) => {
+            badge.classList.remove('bg-emerald-50', 'text-emerald-700', 'bg-slate-100', 'text-slate-600');
+            badge.classList.add(...(status === 'Paid'
+                ? ['bg-emerald-50', 'text-emerald-700']
+                : ['bg-slate-100', 'text-slate-600']));
+            badge.textContent = status;
+        });
+    }
+
+    function addHistory(row, history) {
+        const container = row.querySelector('[data-status-history]');
+        if (! container) {
+            return;
+        }
+
+        container.querySelector('[data-empty-history]')?.remove();
+
+        const entry = document.createElement('p');
+        entry.className = 'mb-2';
+
+        const status = document.createElement('span');
+        status.className = 'font-extrabold';
+        status.textContent = history.status;
+
+        const time = document.createElement('span');
+        time.className = 'text-slate-400';
+        time.textContent = history.updated_at;
+
+        entry.append(status, ` by ${history.updated_by} `, time);
+        container.prepend(entry);
+    }
+
+    document.querySelectorAll('[data-status-form]').forEach((form) => {
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const row = form.closest('[data-order-row]');
+            const button = form.querySelector('button[type="submit"], button:not([type])');
+            const originalText = button.textContent;
+            button.disabled = true;
+            button.textContent = 'Saving...';
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: new FormData(form),
+                });
+                const data = await response.json();
+
+                if (! response.ok) {
+                    const validationMessage = data.errors
+                        ? Object.values(data.errors).flat()[0]
+                        : data.message;
+                    throw new Error(validationMessage || 'Failed to update order status.');
+                }
+
+                updateStatus(row, data.order.status);
+                updateStats(data.stats);
+                addHistory(row, data.history);
+                form.querySelector('textarea[name="notes"]').value = '';
+                window.showToast(data.message);
+            } catch (error) {
+                window.showToast(error.message, 'error');
+            } finally {
+                button.disabled = false;
+                button.textContent = originalText;
+            }
+        });
+    });
+
+    async function refreshOrderSection() {
+        if (snapshotLoading || document.hidden) {
+            return;
+        }
+
+        const rows = [...document.querySelectorAll('[data-order-row]')];
+        const orderIds = rows.map((row) => row.dataset.orderRow).join(',');
+        snapshotLoading = true;
+
+        try {
+            const response = await fetch(`${snapshotUrl}?order_ids=${encodeURIComponent(orderIds)}`, {
+                headers: { 'Accept': 'application/json' },
+            });
+
+            if (! response.ok) {
+                return;
+            }
+
+            const data = await response.json();
+            updateStats(data.stats);
+
+            data.orders.forEach((order) => {
+                const row = document.querySelector(`[data-order-row="${order.id}"]`);
+                if (row) {
+                    updateStatus(row, order.status);
+                    updatePayment(row, order.payment_status);
+                }
+            });
+        } catch {
+            // The next poll will retry if the connection is temporarily unavailable.
+        } finally {
+            snapshotLoading = false;
+        }
+    }
+
+    window.setInterval(refreshOrderSection, 5000);
+    document.addEventListener('visibilitychange', refreshOrderSection);
+});
+</script>
+@endpush

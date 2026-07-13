@@ -5,8 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\OrderStatusHistory;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class OrderController extends Controller
 {
@@ -26,7 +26,7 @@ class OrderController extends Controller
             ])
             ->withSum(['payments as completed_payments_total' => fn ($q) => $q->where('status', 'Completed')], 'amount');
 
-        if ($request->status) {
+        if (in_array($request->status, Order::STATUSES, true)) {
             $query->where('status', $request->status);
         }
 
@@ -45,54 +45,107 @@ class OrderController extends Controller
         }
 
         $orders = $query->latest()->paginate(20)->withQueryString();
-        $orderStats = Cache::remember('orders.stats', 30, fn () => (array) Order::query()
+        $stats = $this->orderStats();
+        $statuses = Order::STATUSES;
+
+        return view('orders', compact('orders', 'stats', 'statuses'));
+    }
+
+    public function snapshot(Request $request)
+    {
+        $orderIds = collect(explode(',', (string) $request->query('order_ids')))
+            ->filter(fn ($id) => ctype_digit($id))
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->take(100);
+
+        $orders = Order::query()
+            ->whereIn('id', $orderIds)
+            ->get(['id', 'status', 'payment_status'])
+            ->map(fn (Order $order) => [
+                'id' => $order->id,
+                'status' => $order->status,
+                'payment_status' => $order->payment_status,
+            ]);
+
+        return response()->json([
+            'stats' => $this->orderStats(),
+            'orders' => $orders,
+        ]);
+    }
+
+    private function orderStats(): array
+    {
+        $totals = (array) Order::query()
             ->toBase()
             ->selectRaw(
                 <<<'SQL'
                 COUNT(*) as total,
-                COUNT(CASE WHEN status = 'Pending' THEN 1 END) as pending,
-                COUNT(CASE WHEN status IN ('Processing', 'Packed', 'Ready') THEN 1 END) as in_progress,
-                COUNT(CASE WHEN status = 'Completed' THEN 1 END) as completed,
-                COUNT(CASE WHEN status = 'Cancelled' THEN 1 END) as cancelled
-                SQL
+                COUNT(CASE WHEN status IN (?, ?) THEN 1 END) as in_progress,
+                COUNT(CASE WHEN status = ? THEN 1 END) as completed,
+                COUNT(CASE WHEN status = ? THEN 1 END) as cancelled
+                SQL,
+                [
+                    Order::STATUS_PROCESSING,
+                    Order::STATUS_READY,
+                    Order::STATUS_COMPLETED,
+                    Order::STATUS_CANCELLED,
+                ]
             )
-            ->first());
+            ->first();
 
-        $stats = [
-            'total' => (int) $orderStats['total'],
-            'pending' => (int) $orderStats['pending'],
-            'in_progress' => (int) $orderStats['in_progress'],
-            'completed' => (int) $orderStats['completed'],
-            'cancelled' => (int) $orderStats['cancelled'],
+        return [
+            'total' => (int) $totals['total'],
+            'in_progress' => (int) $totals['in_progress'],
+            'completed' => (int) $totals['completed'],
+            'cancelled' => (int) $totals['cancelled'],
         ];
-
-        return view('orders', compact('orders', 'stats'));
     }
 
     public function updateStatus(Request $request, Order $order)
     {
         $validated = $request->validate([
-            'status' => 'required|in:Pending,Processing,Packed,Ready,Completed,Cancelled',
+            'status' => ['required', Rule::in(Order::STATUSES)],
             'notes' => 'nullable|string',
         ]);
 
         try {
-            DB::beginTransaction();
-            $order->update(['status' => $validated['status']]);
+            $history = DB::transaction(function () use ($order, $validated) {
+                $order->update(['status' => $validated['status']]);
 
-            OrderStatusHistory::create([
-                'order_id' => $order->id,
-                'admin_id' => auth()->id(),
-                'status' => $validated['status'],
-                'notes' => $validated['notes'] ?? null,
-            ]);
+                return OrderStatusHistory::create([
+                    'order_id' => $order->id,
+                    'admin_id' => auth()->id(),
+                    'status' => $validated['status'],
+                    'notes' => $validated['notes'] ?? null,
+                ]);
+            });
 
-            DB::commit();
+            $message = 'Order status updated to '.$validated['status'].'.';
 
-            return back()->with('success', 'Order status updated to '.$validated['status'].'.');
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => $message,
+                    'order' => [
+                        'id' => $order->id,
+                        'status' => $order->status,
+                    ],
+                    'history' => [
+                        'status' => $history->status,
+                        'updated_by' => auth()->user()->name,
+                        'updated_at' => $history->created_at->diffForHumans(),
+                    ],
+                    'stats' => $this->orderStats(),
+                ]);
+            }
+
+            return back()->with('success', $message);
         } catch (\Exception $e) {
-            DB::rollBack();
             report($e);
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Failed to update order status.'], 500);
+            }
 
             return back()->with('error', 'Failed to update order status.');
         }

@@ -6,20 +6,20 @@ use Illuminate\Database\Eloquent\Model;
 
 class HomeBanner extends Model
 {
+    public const IMAGE_BUCKET = 'home-banner-images';
+
     protected $fillable = [
         'title',
         'message',
         'label',
         'tone',
-        'sort_order',
-        'starts_at',
-        'ends_at',
+        'image_url',
         'is_active',
+        'expires_at',
     ];
 
     protected $casts = [
-        'starts_at' => 'datetime',
-        'ends_at' => 'datetime',
         'is_active' => 'boolean',
+        'expires_at' => 'datetime',
     ];
 }

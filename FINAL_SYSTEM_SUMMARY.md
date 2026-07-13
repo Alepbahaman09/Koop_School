@@ -30,8 +30,7 @@
 - ✅ Total Users (registered parents/students)
 - ✅ Total Orders (all orders from mobile app)
 - ✅ Active Products (available items)
-- ✅ Pending Orders count
-- ✅ Processing Orders count
+- ✅ Active Orders count
 - ✅ Completed Orders count
 - ✅ Low Stock Products alert
 - ✅ Sales chart (last 10 days)
@@ -45,7 +44,7 @@
 **Admin can:**
 - ✅ See ALL orders from mobile app in one table
 - ✅ Search by order number or customer name
-- ✅ Filter by status (Pending, Processing, Packed, Ready, Completed, Cancelled)
+- ✅ Filter by status (Processing, Ready, Completed, Cancelled)
 - ✅ Filter by payment status (Unpaid, Partial, Paid, Refunded)
 - ✅ View order details inline:
   - Order number
@@ -166,12 +165,12 @@ Parent browses products in mobile app
 → Adds items to cart
 → Places order
 → POST /api/v1/orders
-→ Data saved to orders table (Status: Pending)
+→ Data saved to orders table (Status: Processing)
 → Admin sees order at /orders page
 → Admin updates status: Processing (on same page)
 → Status saved to order_status_history
 → Parent sees "Processing" in mobile app
-→ Admin updates: Packed → Ready
+→ Admin updates: Ready
 → Parent sees updates in real-time
 → Parent picks up order
 → Admin marks: Completed
@@ -216,7 +215,7 @@ Admin adds new product at /products
 **Orders Table:**
 - order_number
 - customer_id
-- status (Pending → Processing → Packed → Ready → Completed)
+- status (Processing → Ready → Completed)
 - subtotal, tax, discount, total_amount
 - payment_status
 - notes

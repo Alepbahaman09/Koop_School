@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Customer;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
@@ -18,12 +17,11 @@ class AnalyticsController extends Controller
         $days = $this->validatedDays($request);
         $end = now()->endOfDay();
         $start = now()->subDays($days - 1)->startOfDay();
-        $data = Cache::remember("analytics.index.{$days}", 60, fn () => $this->analyticsData($days));
+        $data = Cache::remember("analytics.index.top_items.{$days}", 60, fn () => $this->analyticsData($days));
         $data['days'] = $days;
         $data['start'] = $start;
         $data['end'] = $end;
         $data['salesTrend'] = collect($data['salesTrend']);
-        $data['statuses'] = collect($data['statuses']);
         $data['categorySales'] = collect($data['categorySales'])->map(fn (array $category) => (object) $category);
         $data['topProducts'] = collect($data['topProducts'])->map(fn (array $product) => (object) $product);
 
@@ -148,20 +146,6 @@ class AnalyticsController extends Controller
 
         $maxRevenue = max(1, (float) collect($salesTrend)->max('revenue'));
 
-        $statusCounts = Order::whereBetween('created_at', [$start, $end])
-            ->select('status', DB::raw('COUNT(*) as total'))
-            ->groupBy('status')
-            ->pluck('total', 'status');
-
-        $statuses = collect(['Pending', 'Processing', 'Packed', 'Ready', 'Completed', 'Cancelled'])
-            ->map(fn (string $status) => [
-                'label' => $status,
-                'total' => (int) ($statusCounts[$status] ?? 0),
-                'percentage' => $orderCount > 0 ? (($statusCounts[$status] ?? 0) / $orderCount) * 100 : 0,
-            ])
-            ->values()
-            ->all();
-
         $categorySales = OrderItem::query()
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->join('products', 'products.id', '=', 'order_items.product_id')
@@ -199,6 +183,7 @@ class AnalyticsController extends Controller
                 DB::raw('COALESCE(SUM(CASE WHEN orders.id IS NOT NULL THEN order_items.subtotal ELSE 0 END), 0) as revenue')
             )
             ->groupBy('products.id', 'products.name', 'products.sku', 'products.image', 'products.stock_quantity')
+            ->havingRaw('SUM(CASE WHEN orders.id IS NOT NULL THEN order_items.quantity ELSE 0 END) > 0')
             ->orderByDesc('units')
             ->limit(5)
             ->get()
@@ -218,7 +203,7 @@ class AnalyticsController extends Controller
             ->selectRaw(
                 <<<'SQL'
                 COALESCE(SUM(price * stock_quantity), 0) as value,
-                COUNT(CASE WHEN is_active = true THEN 1 END) as active,
+                COUNT(*) as total,
                 COUNT(CASE WHEN stock_quantity > 0 AND stock_quantity <= min_stock_level THEN 1 END) as low,
                 COUNT(CASE WHEN stock_quantity = 0 THEN 1 END) as out
                 SQL
@@ -227,7 +212,7 @@ class AnalyticsController extends Controller
 
         $inventory = [
             'value' => (float) $productTotals['value'],
-            'active' => (int) $productTotals['active'],
+            'total' => (int) $productTotals['total'],
             'low' => (int) $productTotals['low'],
             'out' => (int) $productTotals['out'],
         ];
@@ -260,7 +245,6 @@ class AnalyticsController extends Controller
             'metrics',
             'salesTrend',
             'maxRevenue',
-            'statuses',
             'categorySales',
             'categoryTotal',
             'topProducts',

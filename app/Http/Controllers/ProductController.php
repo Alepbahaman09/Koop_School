@@ -7,7 +7,6 @@ use App\Models\InventoryTransaction;
 use App\Models\Product;
 use App\Services\SupabaseStorage;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -20,7 +19,7 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         $query = Product::query()
-            ->select(['id', 'category_id', 'sku', 'name', 'price', 'stock_quantity', 'min_stock_level', 'image', 'is_active', 'created_at'])
+            ->select(['id', 'category_id', 'sku', 'name', 'price', 'stock_quantity', 'min_stock_level', 'image', 'created_at'])
             ->with('category:id,name');
 
         if ($request->filled('search')) {
@@ -39,8 +38,6 @@ class ProductController extends Controller
                 'low' => $query->where('stock_quantity', '>', 0)
                     ->whereColumn('stock_quantity', '<=', 'min_stock_level'),
                 'out' => $query->where('stock_quantity', 0),
-                'active' => $query->where('is_active', true),
-                'inactive' => $query->where('is_active', false),
                 default => null,
             };
         }
@@ -49,30 +46,36 @@ class ProductController extends Controller
         $categories = Category::where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name']);
-        $allCategories = Category::orderBy('name')
-            ->get(['id', 'name', 'description', 'icon_url', 'is_active']);
-        $productStats = Cache::remember('products.stats', 30, fn () => (array) Product::query()
+        $allCategories = Category::query()
+            ->withCount('products')
+            ->orderBy('name')
+            ->get();
+        $categoryStats = [
+            'total' => $allCategories->count(),
+            'active' => $allCategories->where('is_active', true)->count(),
+            'inactive' => $allCategories->where('is_active', false)->count(),
+            'products' => $allCategories->sum('products_count'),
+        ];
+        $productStats = (array) Product::query()
             ->toBase()
             ->selectRaw(
                 <<<'SQL'
                 COUNT(*) as total,
-                COUNT(CASE WHEN is_active = true THEN 1 END) as active,
                 COUNT(CASE WHEN stock_quantity > 0 AND stock_quantity <= min_stock_level THEN 1 END) as low,
                 COUNT(CASE WHEN stock_quantity = 0 THEN 1 END) as out,
                 COALESCE(SUM(price * stock_quantity), 0) as inventory_value
                 SQL
             )
-            ->first());
+            ->first();
 
         $stats = [
             'total' => (int) $productStats['total'],
-            'active' => (int) $productStats['active'],
             'low' => (int) $productStats['low'],
             'out' => (int) $productStats['out'],
             'inventory_value' => (float) $productStats['inventory_value'],
         ];
 
-        return view('products', compact('products', 'categories', 'allCategories', 'stats'));
+        return view('products', compact('products', 'categories', 'allCategories', 'categoryStats', 'stats'));
     }
 
     public function create()
@@ -91,7 +94,6 @@ class ProductController extends Controller
             'stock_quantity' => 'required|integer|min:0',
             'min_stock_level' => 'required|integer|min:0',
             'image' => 'nullable|image|max:2048',
-            'is_active' => 'boolean',
         ]);
 
         if ($request->hasFile('image')) {
@@ -101,8 +103,6 @@ class ProductController extends Controller
                 'products',
             );
         }
-
-        $validated['is_active'] = $request->boolean('is_active');
 
         DB::transaction(function () use ($validated) {
             $product = Product::create($validated);
@@ -139,10 +139,8 @@ class ProductController extends Controller
             'stock_quantity' => 'required|integer|min:0',
             'min_stock_level' => 'required|integer|min:0',
             'image' => 'nullable|image|max:2048',
-            'is_active' => 'boolean',
         ]);
 
-        $validated['is_active'] = $request->boolean('is_active');
         $oldImage = $product->image;
         $oldStock = $product->stock_quantity;
 
@@ -179,19 +177,13 @@ class ProductController extends Controller
 
     public function destroy(Product $product)
     {
-        if ($product->orderItems()->exists()) {
-            $product->update(['is_active' => false]);
-
-            return back()->with('success', 'Product has order history, so it was deactivated instead of deleted.');
-        }
-
         if ($product->image) {
             $this->deleteImage($product->image);
         }
 
         $product->delete();
 
-        return redirect()->route('products.index')->with('success', 'Product deleted successfully.');
+        return to_route('products.index')->with('success', 'Product deleted successfully.');
     }
 
     private function deleteImage(string $image): void

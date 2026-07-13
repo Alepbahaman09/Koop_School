@@ -18,7 +18,6 @@
 ### 2. **categories** - Product Categories
 - `id` - Primary key
 - `name` - Category name
-- `description` - Category description
 - `is_active` - Active status
 - `created_at`, `updated_at` - Timestamps
 
@@ -40,7 +39,7 @@
 - `order_number` - Unique order number
 - `customer_id` - Foreign key to customers
 - `user_id` - Foreign key to users (staff who created order)
-- `status` - Order status (Pending, Processing, Packed, Ready, Completed, Cancelled)
+- `status` - Order status (Processing, Ready, Completed, Cancelled)
 - `subtotal` - Order subtotal
 - `tax` - Tax amount
 - `discount` - Discount amount
@@ -128,15 +127,14 @@
 
 1. **Customer Registration** → customers table
 2. **Product Management** → categories, products tables
-3. **Order Creation** → orders table (status: Pending)
+3. **Order Creation** → orders table (status: Processing)
 4. **Add Items to Order** → order_items table
 5. **Order Processing** → orders table (status: Processing)
-6. **Order Packing** → orders table (status: Packed)
-7. **Order Ready** → orders table (status: Ready)
-8. **Payment Processing** → payments table
-9. **Order Completion** → orders table (status: Completed)
-10. **Status Tracking** → order_status_history table
-11. **Inventory Update** → inventory_transactions table
+6. **Order Ready** → orders table (status: Ready)
+7. **Payment Processing** → payments table
+8. **Order Completion** → orders table (status: Completed)
+9. **Status Tracking** → order_status_history table
+10. **Inventory Update** → inventory_transactions table
 
 ## Purchase Order Flow
 

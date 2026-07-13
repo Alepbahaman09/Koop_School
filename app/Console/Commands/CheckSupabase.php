@@ -29,7 +29,7 @@ class CheckSupabase extends Command
         try {
             $response = $supabase
                 ->rest(! (bool) $this->option('anon'))
-                ->get('/');
+                ->get('/products', ['select' => 'id', 'limit' => 1]);
 
             if ($response->successful()) {
                 $this->info('Supabase REST API: OK');

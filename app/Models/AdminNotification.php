@@ -26,10 +26,6 @@ class AdminNotification extends Model
 
     public static function forOrder(Order $order, string $source = 'mobile'): ?self
     {
-        if (! AppSetting::current()->notificationPreference('new_order_alerts')) {
-            return null;
-        }
-
         $order->loadMissing('customer');
         $customer = $order->customer?->parent_name ?? $order->customer?->student_name ?? 'Unknown customer';
 

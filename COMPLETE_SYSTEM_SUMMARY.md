@@ -48,7 +48,7 @@
 - ✅ View ALL orders from mobile app
 - ✅ Search and filter orders
 - ✅ View order details with customer info
-- ✅ **UPDATE order status** (Pending → Processing → Packed → Ready → Completed)
+- ✅ **UPDATE order status** (Processing → Ready → Completed)
 - ✅ Add notes when updating status
 - ✅ View status history (who changed, when, notes)
 - ✅ Delete orders (if no payments)
@@ -89,7 +89,7 @@
    - POST /api/v1/orders
    ↓
 2. DATABASE:
-   - Saves to orders table (Status: Pending)
+   - Saves to orders table (Status: Processing)
    - Saves items to order_items table
    ↓
 3. ADMIN (Web Dashboard):
@@ -103,12 +103,12 @@
    - Sees status history with admin notes
    ↓
 5. ADMIN (Web Dashboard):
-   - Updates status: Packed
+   - Updates status: Ready
    - Adds note: "Items ready for pickup"
    ↓
 6. CUSTOMER (Mobile App):
    - Refreshes order
-   - Sees: "Packed - Items ready for pickup"
+   - Sees: "Ready - Items ready for pickup"
    ↓
 7. CUSTOMER (Mobile App):
    - Makes payment
@@ -146,12 +146,11 @@ System automatically:
 **Example Customer Sees:**
 ```
 Order #KS-20250101-0001
-Current Status: Packed
+Current Status: Ready
 
 History:
-✅ Pending - 10:00 AM by Admin1 - "Order received"
 ✅ Processing - 10:30 AM by Admin1 - "Started preparing items"
-✅ Packed - 11:00 AM by Admin2 - "All items packed, ready for pickup"
+✅ Ready - 11:00 AM by Admin2 - "All items ready for pickup"
 ```
 
 ---

@@ -81,38 +81,4 @@
     </article>
 </section>
 
-<section class="rounded-lg bg-white p-5 shadow-sm ring-1 ring-slate-100">
-    <div class="mb-5 flex items-center justify-between">
-        <h2 class="text-lg font-extrabold">Recent Finance Activity</h2>
-        <p class="text-sm font-bold text-slate-400">Income minus expenses: <span class="{{ $profit >= 0 ? 'text-emerald-600' : 'text-rose-600' }}">RM {{ number_format($profit, 2) }}</span></p>
-    </div>
-    <div class="overflow-x-auto">
-        <table class="w-full min-w-[850px] text-left text-sm">
-            <thead>
-                <tr class="border-b border-slate-100 text-xs font-extrabold uppercase tracking-wide text-slate-400">
-                    <th class="py-3 pr-4">Reference</th>
-                    <th class="py-3 pr-4">Description</th>
-                    <th class="py-3 pr-4">Party</th>
-                    <th class="py-3 pr-4">Date</th>
-                    <th class="py-3 pr-4">Amount</th>
-                    <th class="py-3 text-right">Status</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-50">
-                @forelse ($recentTransactions as $transaction)
-                    <tr class="hover:bg-slate-50/70">
-                        <td class="py-4 pr-4 font-extrabold text-slate-900">{{ $transaction['id'] }}</td>
-                        <td class="py-4 pr-4 font-semibold text-slate-600">{{ $transaction['description'] }}</td>
-                        <td class="py-4 pr-4 text-slate-500">{{ $transaction['party'] }}</td>
-                        <td class="py-4 pr-4 text-slate-500">{{ $transaction['date_label'] }}</td>
-                        <td class="py-4 pr-4 font-extrabold {{ $transaction['type'] === 'Income' ? 'text-emerald-600' : 'text-rose-600' }}">{{ $transaction['type'] === 'Income' ? '+' : '-' }}RM {{ number_format($transaction['amount'], 2) }}</td>
-                        <td class="py-4 text-right"><span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-600">{{ $transaction['status'] }}</span></td>
-                    </tr>
-                @empty
-                    <tr><td colspan="6" class="py-12 text-center font-semibold text-slate-400">No finance activity found.</td></tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
-</section>
 @endsection
