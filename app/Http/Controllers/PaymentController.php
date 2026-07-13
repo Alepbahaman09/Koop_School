@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Card;
+use App\Models\Product;
+use App\Models\Category;
 use App\Models\OrderStatusHistory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -40,7 +42,25 @@ class PaymentController extends Controller
         // Cards for NFC simulator
         $cards = Card::where('is_frozen', false)->get();
 
-        return view('payment.terminal', compact('order', 'waitingQueue', 'cards'));
+        // POS: active products with their category, ordered by category then name
+        $products = Product::where('is_active', true)
+            ->with('category:id,name')
+            ->orderBy('name')
+            ->get()
+            ->map(fn ($p) => [
+                'id'       => $p->id,
+                'name'     => $p->name,
+                'sku'      => $p->sku,
+                'category' => $p->category?->name ?? 'Others',
+                'price'    => (float) $p->price,
+                'stock'    => (int) $p->stock_quantity,
+                'image'    => $p->image_url,
+            ]);
+
+        // Unique category names that actually have active products
+        $categories = $products->pluck('category')->unique()->sort()->values();
+
+        return view('payment.terminal', compact('order', 'waitingQueue', 'cards', 'products', 'categories'));
     }
 
     public function checkout(Order $order)

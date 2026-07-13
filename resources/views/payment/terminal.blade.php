@@ -289,14 +289,25 @@
                 <input id="search-input" type="text" class="search-input" placeholder="Search products by name…" oninput="filterProducts()">
             </div>
 
-            {{-- Category pills --}}
+            {{-- Category pills – dynamically built from real DB categories --}}
+            @php
+                $catEmoji = [
+                    'Snacks'       => '🍿',
+                    'Drinks'       => '🥤',
+                    'Stationery'   => '✏️',
+                    'Instant Food' => '🍜',
+                    'Food'         => '🍱',
+                    'Beverages'    => '🧃',
+                    'Others'       => '🛒',
+                ];
+            @endphp
             <div class="flex gap-2 overflow-x-auto pb-1 hide-scroll" id="category-pills">
                 <button class="cat-pill active" data-cat="All" onclick="selectCat(this)">All</button>
-                <button class="cat-pill" data-cat="Snacks" onclick="selectCat(this)">🍿 Snacks</button>
-                <button class="cat-pill" data-cat="Drinks" onclick="selectCat(this)">🥤 Drinks</button>
-                <button class="cat-pill" data-cat="Stationery" onclick="selectCat(this)">✏️ Stationery</button>
-                <button class="cat-pill" data-cat="Instant Food" onclick="selectCat(this)">🍜 Instant Food</button>
-                <button class="cat-pill" data-cat="Others" onclick="selectCat(this)">🛒 Others</button>
+                @foreach($categories as $cat)
+                    <button class="cat-pill" data-cat="{{ $cat }}" onclick="selectCat(this)">
+                        {{ $catEmoji[$cat] ?? '🏷️' }} {{ $cat }}
+                    </button>
+                @endforeach
             </div>
         </div>
 
@@ -575,26 +586,20 @@
 {{-- ══════════ JAVASCRIPT ══════════ --}}
 <script>
 // ─────────────────────────────────────────────
-// SAMPLE DATA
+// PRODUCT DATA (live from database via Blade)
 // ─────────────────────────────────────────────
-const PRODUCTS = [
-    { id:1,  name:'Potato Chips',      category:'Snacks',      price:3.50, stock:18, emoji:'🍟' },
-    { id:2,  name:'Pringles Original', category:'Snacks',      price:6.90, stock:10, emoji:'🥔' },
-    { id:3,  name:'Mamee Monster',     category:'Snacks',      price:1.20, stock:35, emoji:'🍜' },
-    { id:4,  name:'Mineral Water',     category:'Drinks',      price:1.50, stock:50, emoji:'💧' },
-    { id:5,  name:'Milo Tin',          category:'Drinks',      price:4.50, stock:22, emoji:'☕' },
-    { id:6,  name:'100Plus',           category:'Drinks',      price:2.50, stock:30, emoji:'🥤' },
-    { id:7,  name:'Pen Blue',          category:'Stationery',  price:1.00, stock:45, emoji:'✏️' },
-    { id:8,  name:'Exercise Book',     category:'Stationery',  price:2.00, stock:60, emoji:'📓' },
-    { id:9,  name:'Ruler 30cm',        category:'Stationery',  price:1.50, stock:25, emoji:'📏' },
-    { id:10, name:'Maggi Mee Goreng',  category:'Instant Food',price:1.80, stock:40, emoji:'🍜' },
-    { id:11, name:'Ibumie Penang',     category:'Instant Food',price:2.00, stock:28, emoji:'🍲' },
-    { id:12, name:'Myojo Curry',       category:'Instant Food',price:2.20, stock:3,  emoji:'🍛' },
-    { id:13, name:'White Correction',  category:'Stationery',  price:1.80, stock:15, emoji:'🖊️' },
-    { id:14, name:'Dutch Lady Milk',   category:'Drinks',      price:3.20, stock:0,  emoji:'🥛' },
-    { id:15, name:'Oreo Cookies',      category:'Snacks',      price:4.20, stock:12, emoji:'🍪' },
-    { id:16, name:'Pencil Case',       category:'Others',      price:5.50, stock:8,  emoji:'🎒' },
-];
+const PRODUCTS = @json($products);
+
+// Category-emoji fallback map (used when a product has no image)
+const CAT_EMOJI = {
+    'Snacks':       '🍟',
+    'Drinks':       '🥤',
+    'Stationery':   '✏️',
+    'Instant Food': '🍜',
+    'Food':         '🍱',
+    'Beverages':    '🧃',
+    'Others':       '🛒',
+};
 
 const SAMPLE_HISTORY = [
     { id:'POS-000042', date:'2026-07-13 09:14', total:12.50, method:'Cash',     status:'Paid',      cashier:'Ahmad Rozi' },
@@ -653,9 +658,18 @@ function renderProducts() {
         const stockClass = p.stock === 0 ? 'stock-out' : p.stock <= 5 ? 'stock-low' : 'stock-ok';
         const stockLabel = p.stock === 0 ? 'Out of stock' : `Stock: ${p.stock}`;
         const disabled   = p.stock === 0 ? 'disabled' : '';
+        const fallback   = CAT_EMOJI[p.category] ?? '🛒';
+
+        // Use real image if available, otherwise category emoji
+        const imgHtml = p.image
+            ? `<img src="${p.image}" alt="${p.name}"
+                   style="width:100%;height:100%;object-fit:cover;border-radius:0;"
+                   onerror="this.parentElement.innerHTML='<span style=\'font-size:2.5rem\'>${fallback}</span>'">`
+            : `<span style="font-size:2.5rem">${fallback}</span>`;
+
         return `
         <div class="product-card" onclick="${p.stock > 0 ? `addToCart(${p.id})` : ''}">
-            <div class="product-img" style="background:${catColor(p.category)};">${p.emoji}</div>
+            <div class="product-img" style="background:${catColor(p.category)};">${imgHtml}</div>
             <div class="p-3 flex flex-col gap-2 flex-1">
                 <div>
                     <div class="font-bold text-slate-800 text-sm leading-tight">${p.name}</div>
@@ -674,7 +688,15 @@ function renderProducts() {
 }
 
 function catColor(cat) {
-    const m = { Snacks:'#fef3c7', Drinks:'#dbeafe', Stationery:'#ede9fe', 'Instant Food':'#fce7f3', Others:'#dcfce7' };
+    const m = {
+        'Snacks':       '#fef3c7',
+        'Drinks':       '#dbeafe',
+        'Stationery':   '#ede9fe',
+        'Instant Food': '#fce7f3',
+        'Food':         '#fef9c3',
+        'Beverages':    '#cffafe',
+        'Others':       '#dcfce7',
+    };
     return m[cat] || '#f1f5f9';
 }
 
