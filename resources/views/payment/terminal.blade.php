@@ -5,528 +5,949 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Cashier Terminal – {{ config('app.name', 'Koop School') }}</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700,800,900&display=swap" rel="stylesheet">
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+
     <style>
-        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-        body{font-family:'Inter',sans-serif;background:#F0F4F8;min-height:100vh;display:flex;flex-direction:column;color:#1E293B}
+        /* ── Base ── */
+        *, *::before, *::after { box-sizing: border-box; }
+        body { font-family: 'Figtree', sans-serif; background: #f0f4f8; min-height: 100vh; overflow: hidden; }
 
-        /* ── TOP BAR ── */
-        .topbar{background:#fff;border-bottom:1px solid #E2E8F0;height:56px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:60}
-        .topbar-left{display:flex;align-items:center;gap:12px}
-        .topbar-logo{width:32px;height:32px;background:#2563EB;border-radius:8px;display:grid;place-items:center;color:#fff;font-weight:900;font-size:14px;flex-shrink:0}
-        .topbar-title{font-weight:800;font-size:15px;color:#1E293B}
-        .topbar-subtitle{font-size:11px;font-weight:600;color:#94A3B8;margin-top:1px}
-        .topbar-right{display:flex;align-items:center;gap:10px}
-        .topbar-time{font-size:13px;font-weight:700;color:#475569;font-variant-numeric:tabular-nums}
-        .back-link{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:#64748B;text-decoration:none;padding:5px 10px;border-radius:8px;border:1.5px solid #E2E8F0;transition:background .12s}
-        .back-link:hover{background:#F8FAFC}
-        .back-link svg{width:14px;height:14px}
+        /* ── POS Grid ── */
+        .pos-grid {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            height: calc(100vh - 60px);
+        }
+        @media (max-width: 1024px) {
+            .pos-grid { grid-template-columns: 1fr; height: auto; overflow: auto; }
+        }
 
-        /* ── MAIN 3-COLUMN GRID ── */
-        .terminal-grid{flex:1;display:grid;grid-template-columns:1fr 340px;grid-template-rows:1fr;gap:0;max-height:calc(100vh - 56px)}
-        @media(max-width:900px){.terminal-grid{grid-template-columns:1fr;grid-template-rows:auto auto}}
+        /* ── Scrollbar ── */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
 
-        /* ── LEFT: CURRENT TRANSACTION ── */
-        .txn-panel{display:flex;flex-direction:column;background:#F0F4F8;overflow:hidden}
+        /* ── Product cards ── */
+        .product-card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 12px rgba(0,0,0,.04);
+            overflow: hidden;
+            transition: transform .15s ease, box-shadow .15s ease;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+        }
+        .product-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(37,99,235,.13);
+        }
+        .product-card:active { transform: translateY(0); }
+        .product-img {
+            width: 100%; aspect-ratio: 1/1;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 3rem; user-select: none;
+        }
+        .add-btn {
+            width: 100%; background: #2563eb; color: #fff;
+            border: none; border-radius: 10px; padding: 9px 0;
+            font-size: 13px; font-weight: 700; cursor: pointer;
+            transition: background .12s, transform .1s;
+            font-family: inherit;
+        }
+        .add-btn:hover { background: #1d4ed8; }
+        .add-btn:active { transform: scale(.97); }
+        .add-btn:disabled { background: #94a3b8; cursor: not-allowed; }
 
-        /* No-queue state */
-        .no-queue{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:40px}
-        .no-queue-icon{font-size:64px}
-        .no-queue-title{font-size:22px;font-weight:800;color:#1E293B}
-        .no-queue-sub{font-size:14px;font-weight:500;color:#64748B;max-width:280px;line-height:1.5}
-        .no-queue-link{display:inline-flex;align-items:center;gap:6px;background:#2563EB;color:#fff;border-radius:12px;padding:10px 20px;font-size:13px;font-weight:700;text-decoration:none;margin-top:8px;transition:background .12s}
-        .no-queue-link:hover{background:#1D4ED8}
+        /* ── Category pills ── */
+        .cat-pill {
+            padding: 7px 16px; border-radius: 99px;
+            border: 1.5px solid #e2e8f0; background: #fff;
+            font-size: 13px; font-weight: 600; color: #64748b;
+            cursor: pointer; transition: all .12s; white-space: nowrap;
+            font-family: inherit;
+        }
+        .cat-pill.active, .cat-pill:hover {
+            background: #2563eb; border-color: #2563eb; color: #fff;
+        }
 
-        /* Student card */
-        .student-card{background:#fff;margin:16px 16px 0;border-radius:16px;padding:16px 20px;display:flex;align-items:center;gap:14px;box-shadow:0 1px 4px rgba(0,0,0,.07)}
-        .student-avatar{width:48px;height:48px;background:#EFF6FF;border:2px solid #BFDBFE;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px;color:#2563EB;flex-shrink:0}
-        .student-name{font-size:18px;font-weight:800;color:#0F172A;line-height:1.2}
-        .student-meta{font-size:12px;font-weight:600;color:#64748B;margin-top:2px}
-        .student-badge{margin-left:auto;background:#EFF6FF;color:#1D4ED8;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;white-space:nowrap}
+        /* ── Cart item ── */
+        .cart-item-row {
+            animation: slide-in .2s ease;
+        }
+        @keyframes slide-in { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: none; } }
 
-        /* Cart */
-        .cart-wrap{flex:1;overflow-y:auto;margin:12px 16px 0;background:#fff;border-radius:16px;box-shadow:0 1px 4px rgba(0,0,0,.07)}
-        .cart-header{padding:12px 16px;border-bottom:1px solid #F1F5F9;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#94A3B8;display:flex;justify-content:space-between}
-        .cart-item{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #F8FAFC}
-        .cart-item:last-child{border-bottom:none}
-        .cart-item-name{font-size:14px;font-weight:600;color:#1E293B}
-        .cart-item-qty{font-size:12px;font-weight:700;color:#94A3B8;background:#F1F5F9;border-radius:6px;padding:3px 8px;white-space:nowrap}
-        .cart-item-price{font-size:14px;font-weight:700;color:#374151;text-align:right;white-space:nowrap}
-        .cart-empty{text-align:center;padding:32px;color:#CBD5E1;font-size:13px;font-weight:600}
+        /* ── Qty stepper ── */
+        .qty-btn {
+            width: 28px; height: 28px; border-radius: 8px;
+            border: 1.5px solid #e2e8f0; background: #f8fafc;
+            font-size: 16px; font-weight: 700; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background .1s, border-color .1s; color: #374151;
+            font-family: inherit;
+        }
+        .qty-btn:hover { background: #eff6ff; border-color: #93c5fd; color: #2563eb; }
 
-        /* Total bar */
-        .total-bar{margin:12px 16px 0;background:#0F172A;border-radius:16px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between}
-        .total-label{font-size:13px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.06em}
-        .total-amount{font-size:36px;font-weight:900;color:#fff;letter-spacing:-1px;line-height:1}
-        .order-ref{font-size:11px;font-weight:600;color:#475569;margin-top:2px}
+        /* ── Payment method tabs ── */
+        .pay-tab {
+            flex: 1; padding: 10px 4px; border-radius: 10px;
+            border: 1.5px solid #e2e8f0; background: #f8fafc;
+            font-size: 11px; font-weight: 700; cursor: pointer;
+            transition: all .12s; text-align: center; color: #64748b;
+            font-family: inherit;
+        }
+        .pay-tab.active {
+            background: #eff6ff; border-color: #2563eb; color: #2563eb;
+        }
+        .pay-tab:hover:not(.active):not(:disabled) {
+            background: #f1f5f9; border-color: #cbd5e1;
+        }
+        .pay-tab:disabled { opacity: .45; cursor: not-allowed; }
 
-        /* Payment actions */
-        .payment-actions{margin:12px 16px 16px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
-        .pay-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:90px;border-radius:16px;border:none;cursor:pointer;font-family:'Inter',sans-serif;transition:transform .1s,box-shadow .12s;-webkit-tap-highlight-color:transparent;position:relative;overflow:hidden}
-        .pay-btn:active{transform:scale(.97)}
-        .pay-btn-icon{font-size:32px;line-height:1}
-        .pay-btn-label{font-size:14px;font-weight:800;line-height:1.2;text-align:center}
-        .pay-btn-sub{font-size:11px;font-weight:500;opacity:.75;text-align:center}
-        .pay-btn.nfc{background:#2563EB;color:#fff;box-shadow:0 4px 16px rgba(37,99,235,.3)}
-        .pay-btn.nfc:hover{box-shadow:0 6px 20px rgba(37,99,235,.4)}
-        .pay-btn.cash{background:#16A34A;color:#fff;box-shadow:0 4px 16px rgba(22,163,74,.3)}
-        .pay-btn.cash:hover{box-shadow:0 6px 20px rgba(22,163,74,.4)}
-        .pay-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+        /* ── Checkout btn ── */
+        .checkout-btn {
+            width: 100%; padding: 16px; border-radius: 14px;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: #fff; border: none; font-size: 16px; font-weight: 800;
+            cursor: pointer; transition: opacity .15s, transform .1s;
+            box-shadow: 0 4px 16px rgba(37,99,235,.35);
+            font-family: inherit; letter-spacing: -.2px;
+        }
+        .checkout-btn:hover { opacity: .92; }
+        .checkout-btn:active { transform: scale(.98); }
+        .checkout-btn:disabled {
+            background: #94a3b8; box-shadow: none; cursor: not-allowed; opacity: 1;
+        }
 
-        /* ── RIGHT: QUEUE PANEL ── */
-        .queue-panel{background:#fff;border-left:1px solid #E2E8F0;display:flex;flex-direction:column;overflow:hidden}
-        .queue-header{padding:16px 20px;border-bottom:1px solid #F1F5F9;display:flex;align-items:center;justify-content:space-between}
-        .queue-header-title{font-size:13px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.06em}
-        .queue-count{background:#EFF6FF;color:#1D4ED8;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700}
-        .queue-list{flex:1;overflow-y:auto;padding:8px 0}
-        .queue-item{display:flex;align-items:center;gap:12px;padding:10px 20px;cursor:pointer;transition:background .1s;text-decoration:none}
-        .queue-item:hover{background:#F8FAFC}
-        .queue-item.active-order{background:#EFF6FF;border-left:3px solid #2563EB}
-        .queue-num{width:24px;height:24px;border-radius:50%;background:#F1F5F9;font-size:11px;font-weight:800;color:#94A3B8;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-        .queue-item.active-order .queue-num{background:#2563EB;color:#fff}
-        .queue-info{flex:1;min-width:0}
-        .queue-student{font-size:13px;font-weight:700;color:#1E293B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-        .queue-class{font-size:11px;font-weight:600;color:#94A3B8}
-        .queue-amt{font-size:13px;font-weight:800;color:#374151;flex-shrink:0}
-        .queue-status{font-size:10px;font-weight:700;border-radius:6px;padding:2px 6px;margin-top:2px;display:inline-block}
-        .queue-status.unpaid{background:#FEF9C3;color:#A16207}
-        .queue-status.partial{background:#FFEDD5;color:#C2410C}
-        .queue-empty{padding:32px 20px;text-align:center;color:#CBD5E1;font-size:13px;font-weight:600}
+        /* ── Modals ── */
+        .modal-backdrop {
+            position: fixed; inset: 0; z-index: 100;
+            background: rgba(15,23,42,.55); backdrop-filter: blur(4px);
+            display: none; align-items: center; justify-content: center; padding: 20px;
+        }
+        .modal-backdrop.open { display: flex; }
+        .modal-card {
+            background: #fff; border-radius: 24px; width: 100%; max-width: 480px;
+            max-height: 90vh; overflow-y: auto;
+            box-shadow: 0 24px 64px rgba(0,0,0,.22);
+            animation: modal-pop .25s cubic-bezier(.34,1.56,.64,1);
+        }
+        @keyframes modal-pop {
+            from { opacity: 0; transform: scale(.88) translateY(10px); }
+            to   { opacity: 1; transform: none; }
+        }
 
-        /* ── OVERLAY SCREENS ── */
-        .overlay{position:fixed;inset:0;z-index:100;display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;background:rgba(15,23,42,.6);backdrop-filter:blur(4px)}
-        .overlay.active{display:flex}
-        .overlay-card{background:#fff;border-radius:24px;padding:40px 32px;max-width:440px;width:100%;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,.25);animation:pop-in .25s cubic-bezier(.34,1.56,.64,1)}
-        @keyframes pop-in{from{opacity:0;transform:scale(.88) translateY(8px)}to{opacity:1;transform:none}}
+        /* ── History modal wide ── */
+        .modal-card.wide { max-width: 760px; }
 
-        /* NFC waiting overlay */
-        .nfc-rings{position:relative;width:140px;height:140px;margin:0 auto 24px;display:flex;align-items:center;justify-content:center}
-        .nfc-ring{position:absolute;border-radius:50%;border:3px solid rgba(37,99,235,.25);animation:ring-out 2s ease-out infinite}
-        .nfc-ring:nth-child(1){width:140px;height:140px;animation-delay:0s}
-        .nfc-ring:nth-child(2){width:104px;height:104px;animation-delay:.35s}
-        .nfc-ring:nth-child(3){width:70px;height:70px;animation-delay:.7s}
-        @keyframes ring-out{0%{opacity:1;transform:scale(.5)}100%{opacity:0;transform:scale(1)}}
-        .nfc-core{position:relative;z-index:2;width:72px;height:72px;background:#2563EB;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 28px rgba(37,99,235,.45)}
-        .nfc-core svg{width:36px;height:36px;color:#fff}
-        .overlay-title{font-size:22px;font-weight:800;color:#0F172A;margin-bottom:8px}
-        .overlay-sub{font-size:14px;font-weight:500;color:#64748B;line-height:1.5;margin-bottom:20px}
-        .overlay-amount{background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:100px;padding:8px 24px;font-size:22px;font-weight:900;color:#1D4ED8;letter-spacing:-.5px;display:inline-block;margin-bottom:24px}
+        /* ── Toast ── */
+        #toast {
+            position: fixed; bottom: 24px; left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: #1e293b; color: #fff; border-radius: 12px;
+            padding: 11px 22px; font-size: 13px; font-weight: 600;
+            box-shadow: 0 8px 24px rgba(0,0,0,.25); z-index: 200;
+            transition: transform .3s ease, opacity .3s ease;
+            opacity: 0; pointer-events: none; white-space: nowrap;
+        }
+        #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 
-        /* Cash confirm overlay */
-        .cash-amount{font-size:52px;font-weight:900;color:#15803D;letter-spacing:-2px;line-height:1;margin:12px 0 24px}
+        /* ── Stock badge ── */
+        .stock-low  { background: #fef9c3; color: #92400e; }
+        .stock-ok   { background: #dcfce7; color: #166534; }
+        .stock-out  { background: #fee2e2; color: #991b1b; }
 
-        /* Success overlay */
-        .success-icon-wrap{width:100px;height:100px;background:#F0FDF4;border:4px solid #22C55E;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;animation:pop-in .35s cubic-bezier(.34,1.56,.64,1)}
-        .success-icon-wrap svg{width:52px;height:52px;color:#16A34A}
-        .success-title{font-size:26px;font-weight:900;color:#0F172A;margin-bottom:4px}
-        .success-amount{font-size:38px;font-weight:900;color:#16A34A;letter-spacing:-1px;margin-bottom:20px}
-        .success-detail{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:14px;padding:14px 18px;margin-bottom:20px;text-align:left}
-        .success-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13px}
-        .success-row+.success-row{border-top:1px solid #F1F5F9}
-        .s-label{color:#64748B;font-weight:600}
-        .s-value{color:#1E293B;font-weight:700}
-        .s-value.green{color:#16A34A}
-        .countdown-text{font-size:12px;font-weight:600;color:#94A3B8}
+        /* ── Receipt table ── */
+        .receipt-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .receipt-table th { text-align: left; padding: 6px 8px; font-weight: 700; color: #64748b; border-bottom: 1px solid #f1f5f9; }
+        .receipt-table td { padding: 7px 8px; border-bottom: 1px solid #f8fafc; }
 
-        /* Buttons */
-        .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:52px;border-radius:14px;font-size:14px;font-weight:700;cursor:pointer;border:none;font-family:'Inter',sans-serif;transition:background .12s,transform .1s;padding:0 24px;width:100%;letter-spacing:-.2px}
-        .btn:active{transform:scale(.97)}
-        .btn-blue{background:#2563EB;color:#fff;box-shadow:0 4px 12px rgba(37,99,235,.3)}
-        .btn-blue:hover{background:#1D4ED8}
-        .btn-green{background:#16A34A;color:#fff;box-shadow:0 4px 12px rgba(22,163,74,.3)}
-        .btn-green:hover{background:#15803D}
-        .btn-outline{background:transparent;color:#475569;border:2px solid #E2E8F0}
-        .btn-outline:hover{background:#F8FAFC}
-        .btn-row{display:flex;gap:10px;margin-top:8px}
-        .btn-row .btn{flex:1}
+        /* ── History table ── */
+        .hist-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .hist-table th { text-align: left; padding: 10px 12px; font-weight: 700; color: #64748b; background: #f8fafc; border-bottom: 2px solid #e2e8f0; }
+        .hist-table td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+        .hist-table tr:hover td { background: #f8fafc; }
 
-        /* Sim panel */
-        .sim-section{margin-top:20px;border-top:1px solid #F1F5F9;padding-top:16px;text-align:left}
-        .sim-title{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#F59E0B;margin-bottom:8px}
-        .sim-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-        .sim-btn{background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:10px;padding:8px 12px;cursor:pointer;text-align:left;transition:background .1s}
-        .sim-btn:hover{background:#FEF9C3}
-        .sim-name{font-size:12px;font-weight:700;color:#1E293B}
-        .sim-meta{font-size:10px;color:#92400E;margin-top:2px}
+        /* ── QR Placeholder ── */
+        .qr-box {
+            width: 140px; height: 140px; border: 3px dashed #93c5fd;
+            border-radius: 16px; display: flex; align-items: center;
+            justify-content: center; margin: 0 auto;
+            background: repeating-linear-gradient(
+                45deg, #eff6ff, #eff6ff 5px, #dbeafe 5px, #dbeafe 10px
+            );
+        }
 
-        /* Hidden scanner input */
-        #nfc-input{position:fixed;top:-200px;left:0;width:1px;height:1px;opacity:0}
+        /* ── Scrollable sections ── */
+        .products-scroll { flex: 1; overflow-y: auto; padding: 0 16px 16px; }
+        .cart-scroll { flex: 1; overflow-y: auto; }
 
-        /* Toast */
-        #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:#1E293B;color:#fff;border-radius:12px;padding:11px 22px;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:200;transition:transform .3s ease,opacity .3s ease;opacity:0;pointer-events:none;white-space:nowrap}
-        #toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+        /* ── Empty cart ── */
+        .empty-cart {
+            flex: 1; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            color: #cbd5e1; gap: 10px; padding: 32px;
+        }
+
+        /* Search bar */
+        .search-wrap { position: relative; }
+        .search-wrap svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: #94a3b8; pointer-events: none; }
+        .search-input { width: 100%; padding: 11px 14px 11px 42px; border-radius: 12px; border: 1.5px solid #e2e8f0; font-size: 14px; font-family: inherit; background: #fff; outline: none; transition: border-color .12s; }
+        .search-input:focus { border-color: #2563eb; }
     </style>
 </head>
 <body>
 
-<!-- TOP BAR -->
-<header class="topbar">
-    <div class="topbar-left">
-        <div class="topbar-logo">K</div>
+{{-- ══════════ TOP BAR ══════════ --}}
+<header class="bg-white border-b border-slate-200 px-5 flex items-center justify-between gap-4" style="height:60px; position:sticky; top:0; z-index:50;">
+    <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white font-black text-sm shrink-0"
+             style="background: linear-gradient(135deg,#2563eb,#1d4ed8); box-shadow:0 4px 12px rgba(37,99,235,.35);">K</div>
         <div>
-            <div class="topbar-title">Cashier Terminal</div>
-            <div class="topbar-subtitle">KoopAll School Cooperative POS</div>
+            <div class="font-black text-slate-800 text-sm leading-tight">Cashier Terminal</div>
+            <div class="text-xs font-semibold text-slate-400 leading-tight">Koop School POS</div>
         </div>
     </div>
-    <div class="topbar-right">
-        <span class="topbar-time" id="live-clock">--:--</span>
-        <a href="{{ route('orders.index') }}" class="back-link">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-            Orders
-        </a>
+
+    <div class="flex items-center gap-3">
+        {{-- Live clock --}}
+        <div class="hidden sm:flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2">
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 6v6l4 2"/>
+            </svg>
+            <span id="live-clock" class="text-sm font-bold text-slate-700 tabular-nums">--:--</span>
+        </div>
+
+        {{-- Order History --}}
+        <button onclick="openHistoryModal()" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl px-4 py-2 text-sm font-700 transition-colors" style="font-weight:700;">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            Order History
+        </button>
+
+        {{-- User avatar --}}
+        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white font-bold text-sm shrink-0">
+            {{ strtoupper(substr(auth()->user()->name ?? 'A', 0, 1)) }}
+        </div>
     </div>
 </header>
 
-<!-- Hidden scanner input (catches NFC keyboard-wedge) -->
-<input type="text" id="nfc-input" autocomplete="off" inputmode="none">
+{{-- ══════════ MAIN POS GRID ══════════ --}}
+<main class="pos-grid">
 
-<div class="terminal-grid">
+    {{-- ════════ LEFT: PRODUCTS PANEL ════════ --}}
+    <div class="flex flex-col" style="background:#f0f4f8; overflow:hidden;">
 
-    {{-- ════════════ LEFT: CURRENT TRANSACTION ════════════ --}}
-    <div class="txn-panel">
-
-        @if (!$order)
-            {{-- All-clear state --}}
-            <div class="no-queue">
-                <div class="no-queue-icon">✅</div>
-                <div class="no-queue-title">Queue is clear!</div>
-                <div class="no-queue-sub">All orders have been paid. No students are waiting.</div>
-                <a href="{{ route('orders.index') }}" class="no-queue-link">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-                    View Orders
-                </a>
-            </div>
-
-        @else
-            {{-- Student card --}}
-            <div class="student-card">
-                <div class="student-avatar">
-                    {{ strtoupper(substr($order->customer?->student_name ?? 'S', 0, 1)) }}
-                </div>
-                <div>
-                    <div class="student-name">{{ $order->customer?->student_name ?? 'Walk-in Customer' }}</div>
-                    <div class="student-meta">
-                        {{ $order->customer?->class ? 'Class ' . $order->customer->class : '' }}
-                        @if ($order->customer?->student_id)
-                            &middot; ID: {{ $order->customer->student_id }}
-                        @endif
-                    </div>
-                </div>
-                <div class="student-badge"># {{ $order->order_number }}</div>
-            </div>
-
-            {{-- Cart items --}}
-            <div class="cart-wrap">
-                <div class="cart-header">
-                    <span>Item</span>
-                    <span>Total</span>
-                </div>
-                @forelse ($order->orderItems as $item)
-                    <div class="cart-item">
-                        <div class="cart-item-name">{{ $item->product?->name ?? 'Unknown item' }}</div>
-                        <div class="cart-item-qty">x{{ $item->quantity }}</div>
-                        <div class="cart-item-price">RM {{ number_format($item->subtotal, 2) }}</div>
-                    </div>
-                @empty
-                    <div class="cart-empty">No items in this order.</div>
-                @endforelse
-            </div>
-
-            {{-- Total --}}
-            <div class="total-bar">
-                <div>
-                    <div class="total-label">Total Amount Due</div>
-                    <div class="order-ref">{{ $order->payment_status }}</div>
-                </div>
-                <div class="total-amount">RM {{ number_format($order->total_amount, 2) }}</div>
-            </div>
-
-            {{-- Payment action buttons --}}
-            <div class="payment-actions">
-                <button class="pay-btn nfc" onclick="openNfc()" type="button">
-                    <div class="pay-btn-icon">
-                        <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-                            <path d="M6 8.5C7.5 7 9.6 6 12 6s4.5 1 6 2.5"/>
-                            <path d="M8.5 11C9.5 10 10.7 9.5 12 9.5s2.5.5 3.5 1.5"/>
-                            <circle cx="12" cy="14" r="1.2" fill="currentColor"/>
-                            <path d="M3 5.5C5.4 3.3 8.5 2 12 2s6.6 1.3 9 3.5"/>
-                        </svg>
-                    </div>
-                    <div class="pay-btn-label">NFC Card</div>
-                    <div class="pay-btn-sub">Tap student's card</div>
-                </button>
-
-                <button class="pay-btn cash" onclick="openCash()" type="button">
-                    <div class="pay-btn-icon">
-                        <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-                            <rect x="1" y="4" width="22" height="16" rx="3"/>
-                            <circle cx="12" cy="12" r="3"/>
-                            <path d="M1 9h2M21 9h2M1 15h2M21 15h2"/>
-                        </svg>
-                    </div>
-                    <div class="pay-btn-label">Cash</div>
-                    <div class="pay-btn-sub">Receive cash manually</div>
-                </button>
-            </div>
-        @endif
-    </div>
-
-    {{-- ════════════ RIGHT: QUEUE PANEL ════════════ --}}
-    <div class="queue-panel">
-        <div class="queue-header">
-            <span class="queue-header-title">Waiting Queue</span>
-            <span class="queue-count">{{ $waitingQueue->count() }} waiting</span>
-        </div>
-
-        <div class="queue-list">
-            @if ($order)
-                {{-- Active order shown at top --}}
-                <a class="queue-item active-order" href="{{ route('payment.index', ['order_id' => $order->id]) }}">
-                    <div class="queue-num">●</div>
-                    <div class="queue-info">
-                        <div class="queue-student">{{ $order->customer?->student_name ?? 'Walk-in' }}</div>
-                        <div class="queue-class">
-                            {{ $order->customer?->class ? 'Class ' . $order->customer->class : '—' }}
-                            <span class="queue-status {{ strtolower($order->payment_status) }}">{{ $order->payment_status }}</span>
-                        </div>
-                    </div>
-                    <div class="queue-amt">RM {{ number_format($order->total_amount, 2) }}</div>
-                </a>
-            @endif
-
-            @forelse ($waitingQueue as $i => $q)
-                <a class="queue-item" href="{{ route('payment.index', ['order_id' => $q->id]) }}">
-                    <div class="queue-num">{{ $i + 1 }}</div>
-                    <div class="queue-info">
-                        <div class="queue-student">{{ $q->customer?->student_name ?? 'Walk-in' }}</div>
-                        <div class="queue-class">
-                            {{ $q->customer?->class ? 'Class ' . $q->customer->class : '—' }}
-                            <span class="queue-status {{ strtolower($q->payment_status) }}">{{ $q->payment_status }}</span>
-                        </div>
-                    </div>
-                    <div class="queue-amt">RM {{ number_format($q->total_amount, 2) }}</div>
-                </a>
-            @empty
-                @if (!$order)
-                    <div class="queue-empty">No students waiting.</div>
-                @endif
-            @endforelse
-        </div>
-    </div>
-
-</div>
-
-{{-- ══════════ NFC OVERLAY ══════════ --}}
-@if ($order)
-<div class="overlay" id="overlay-nfc">
-    <div class="overlay-card">
-        <div class="nfc-rings">
-            <div class="nfc-ring"></div>
-            <div class="nfc-ring"></div>
-            <div class="nfc-ring"></div>
-            <div class="nfc-core">
-                <svg fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-                    <path d="M6 8.5C7.5 7 9.6 6 12 6s4.5 1 6 2.5"/>
-                    <path d="M8.5 11C9.5 10 10.7 9.5 12 9.5s2.5.5 3.5 1.5"/>
-                    <circle cx="12" cy="14" r="1.4" fill="currentColor"/>
-                    <path d="M3 5.5C5.4 3.3 8.5 2 12 2s6.6 1.3 9 3.5"/>
+        {{-- Search + Category bar --}}
+        <div class="px-4 pt-4 pb-3 bg-white border-b border-slate-100">
+            {{-- Search --}}
+            <div class="search-wrap mb-3">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="M21 21l-4.35-4.35"/>
                 </svg>
+                <input id="search-input" type="text" class="search-input" placeholder="Search products by name…" oninput="filterProducts()">
+            </div>
+
+            {{-- Category pills --}}
+            <div class="flex gap-2 overflow-x-auto pb-1 hide-scroll" id="category-pills">
+                <button class="cat-pill active" data-cat="All" onclick="selectCat(this)">All</button>
+                <button class="cat-pill" data-cat="Snacks" onclick="selectCat(this)">🍿 Snacks</button>
+                <button class="cat-pill" data-cat="Drinks" onclick="selectCat(this)">🥤 Drinks</button>
+                <button class="cat-pill" data-cat="Stationery" onclick="selectCat(this)">✏️ Stationery</button>
+                <button class="cat-pill" data-cat="Instant Food" onclick="selectCat(this)">🍜 Instant Food</button>
+                <button class="cat-pill" data-cat="Others" onclick="selectCat(this)">🛒 Others</button>
             </div>
         </div>
 
-        <div class="overlay-title">Tap NFC Card</div>
-        <div class="overlay-sub">Please tap the student's NFC card<br>near the reader to complete payment.</div>
-        <div class="overlay-amount">RM {{ number_format($order->total_amount, 2) }}</div>
-
-        @if ($cards->count() > 0)
-        <div class="sim-section">
-            <div class="sim-title">⚙ Dev — Simulate card tap</div>
-            <div class="sim-grid">
-                @foreach ($cards as $c)
-                    <button type="button" class="sim-btn" onclick="simulateTap('{{ $c->card_uid }}')">
-                        <div class="sim-name">{{ $c->owner === '999999' ? 'Ali Bin Abu' : $c->owner }}</div>
-                        <div class="sim-meta">{{ $c->card_uid }} · RM {{ number_format($c->balance, 2) }}</div>
-                    </button>
-                @endforeach
+        {{-- Product Grid --}}
+        <div class="products-scroll">
+            <div class="text-xs font-semibold text-slate-400 mt-4 mb-3" id="product-count-label">Loading…</div>
+            <div id="product-grid" class="grid gap-4" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));"></div>
+            <div id="no-products" class="hidden text-center py-16 text-slate-400">
+                <div class="text-5xl mb-3">🔍</div>
+                <div class="font-semibold">No products found</div>
+                <div class="text-sm">Try a different search or category</div>
             </div>
-        </div>
-        @endif
-
-        <div class="btn-row" style="margin-top:20px">
-            <button class="btn btn-outline" onclick="closeNfc()" type="button">Cancel</button>
         </div>
     </div>
-</div>
 
-{{-- ══════════ CASH OVERLAY ══════════ --}}
-<div class="overlay" id="overlay-cash">
-    <div class="overlay-card">
-        <div style="font-size:56px;margin-bottom:8px">💵</div>
-        <div class="overlay-title">Cash Payment</div>
-        <div class="overlay-sub">Collect cash from the student.</div>
-        <div class="cash-amount">RM {{ number_format($order->total_amount, 2) }}</div>
+    {{-- ════════ RIGHT: CART PANEL ════════ --}}
+    <div class="flex flex-col bg-white border-l border-slate-200" style="overflow:hidden;">
 
-        <div class="btn-row">
-            <button class="btn btn-outline" onclick="closeCash()" type="button">Cancel</button>
-            <button class="btn btn-green" onclick="confirmCash()" type="button">
-                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                Confirm Payment
+        {{-- Cart header --}}
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-2">
+                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path stroke-linecap="round" d="M16 10a4 4 0 0 1-8 0"/>
+                </svg>
+                <span class="font-black text-slate-800 text-base">Shopping Cart</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span id="cart-count-badge" class="hidden bg-blue-600 text-white rounded-full px-2.5 py-0.5 text-xs font-bold">0</span>
+                <button onclick="clearCart()" id="clear-cart-btn" class="hidden text-xs font-semibold text-slate-400 hover:text-red-500 transition-colors">Clear</button>
+            </div>
+        </div>
+
+        {{-- Cart items --}}
+        <div class="cart-scroll px-4 py-2" id="cart-items-wrap">
+            {{-- Empty state --}}
+            <div class="empty-cart" id="empty-cart-msg">
+                <svg class="w-16 h-16 text-slate-200" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path stroke-linecap="round" d="M16 10a4 4 0 0 1-8 0"/>
+                </svg>
+                <div class="font-semibold text-slate-400 text-sm">Cart is empty</div>
+                <div class="text-xs text-slate-300">Add products from the left panel</div>
+            </div>
+            {{-- Items injected here by JS --}}
+        </div>
+
+        {{-- Totals --}}
+        <div class="px-5 py-3 border-t border-slate-100 bg-slate-50 shrink-0" id="totals-section" style="display:none;">
+            <div class="space-y-1.5 text-sm">
+                <div class="flex justify-between text-slate-500">
+                    <span class="font-semibold">Subtotal</span>
+                    <span class="font-bold" id="subtotal-val">RM0.00</span>
+                </div>
+                <div class="flex justify-between text-slate-500">
+                    <span class="font-semibold">Discount</span>
+                    <span class="font-bold text-emerald-600" id="discount-val">RM0.00</span>
+                </div>
+                <div class="flex justify-between text-slate-500">
+                    <span class="font-semibold">Tax (0%)</span>
+                    <span class="font-bold" id="tax-val">RM0.00</span>
+                </div>
+            </div>
+            <div class="mt-2.5 pt-2.5 border-t border-slate-200 flex justify-between items-center">
+                <span class="font-black text-slate-800 text-base">TOTAL</span>
+                <span class="font-black text-blue-600 text-2xl leading-tight" id="total-val">RM0.00</span>
+            </div>
+        </div>
+
+        {{-- Payment Methods --}}
+        <div class="px-4 pb-3 shrink-0 border-t border-slate-100" id="payment-section" style="display:none;">
+            <div class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-3 mb-2">Payment Method</div>
+            <div class="flex gap-2 mb-3" id="pay-tabs">
+                <button class="pay-tab active" data-method="Cash" onclick="selectPayMethod(this)">
+                    💵<br>Cash
+                </button>
+                <button class="pay-tab" data-method="DuitNow" onclick="selectPayMethod(this)">
+                    📱<br>DuitNow QR
+                </button>
+                <button class="pay-tab" data-method="Card" onclick="selectPayMethod(this)">
+                    💳<br>Card
+                </button>
+                <button class="pay-tab" data-method="Wallet" disabled title="Coming soon">
+                    🎒<br><span class="opacity-60">Wallet</span>
+                </button>
+            </div>
+
+            {{-- Cash panel --}}
+            <div id="panel-Cash">
+                <div class="mb-2">
+                    <label class="text-xs font-bold text-slate-500 block mb-1">Amount Received (RM)</label>
+                    <input id="cash-received" type="number" min="0" step="0.50" placeholder="0.00"
+                        class="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-lg font-bold text-slate-800 outline-none focus:border-blue-400 transition-colors"
+                        oninput="calcChange()">
+                </div>
+                <div class="flex justify-between items-center bg-emerald-50 rounded-xl px-4 py-2.5">
+                    <span class="text-sm font-bold text-emerald-700">Change</span>
+                    <span class="text-lg font-black text-emerald-700" id="change-val">RM0.00</span>
+                </div>
+            </div>
+
+            {{-- DuitNow panel --}}
+            <div id="panel-DuitNow" style="display:none;">
+                <div class="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-center">
+                    <div class="text-sm font-bold text-blue-700 mb-3">Show QR to Student</div>
+                    <div class="qr-box mb-3">
+                        <svg class="w-10 h-10 text-blue-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                            <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                            <rect x="3" y="14" width="7" height="7" rx="1"/>
+                            <path stroke-linecap="round" d="M14 14h2v2h-2zm4 0h3v3h-3zm0 4h3v3h-3zm-4 2h2v2h-2z"/>
+                        </svg>
+                    </div>
+                    <div class="text-xs text-blue-400 font-semibold">QR Code will appear here</div>
+                </div>
+            </div>
+
+            {{-- Card panel --}}
+            <div id="panel-Card" style="display:none;">
+                <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center">
+                    <div class="text-3xl mb-2">💳</div>
+                    <div class="text-sm font-bold text-slate-700">Tap Card to Continue</div>
+                    <div class="text-xs text-slate-400 mt-1">Ask student to tap their card on the reader</div>
+                    <div class="mt-3 flex gap-1 justify-center">
+                        <div class="w-2 h-2 rounded-full bg-blue-400 animate-bounce" style="animation-delay:0s"></div>
+                        <div class="w-2 h-2 rounded-full bg-blue-400 animate-bounce" style="animation-delay:.15s"></div>
+                        <div class="w-2 h-2 rounded-full bg-blue-400 animate-bounce" style="animation-delay:.30s"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Checkout button --}}
+        <div class="px-4 pb-4 shrink-0" id="checkout-section" style="display:none;">
+            <button id="checkout-btn" class="checkout-btn" onclick="doCheckout()">
+                <span class="flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Complete Payment
+                </span>
             </button>
         </div>
+
+    </div>
+</main>
+
+{{-- ══════════ RECEIPT MODAL ══════════ --}}
+<div class="modal-backdrop" id="receipt-modal">
+    <div class="modal-card">
+        <div class="p-6 text-center border-b border-slate-100">
+            {{-- Success icon --}}
+            <div class="w-20 h-20 bg-emerald-50 border-4 border-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4"
+                 style="animation: modal-pop .4s cubic-bezier(.34,1.56,.64,1);">
+                <svg class="w-10 h-10 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                </svg>
+            </div>
+            <div class="text-2xl font-black text-slate-800 mb-1">Payment Successful!</div>
+            <div class="text-3xl font-black text-emerald-500 leading-tight" id="r-total">RM0.00</div>
+        </div>
+
+        <div class="p-6">
+            {{-- Transaction details --}}
+            <div class="bg-slate-50 rounded-2xl border border-slate-100 p-4 mb-4">
+                <div class="grid grid-cols-2 gap-2 text-sm mb-3">
+                    <div>
+                        <div class="text-slate-400 font-semibold text-xs mb-0.5">Transaction ID</div>
+                        <div class="font-black text-slate-800" id="r-txn-id">—</div>
+                    </div>
+                    <div>
+                        <div class="text-slate-400 font-semibold text-xs mb-0.5">Date & Time</div>
+                        <div class="font-bold text-slate-700" id="r-date">—</div>
+                    </div>
+                    <div>
+                        <div class="text-slate-400 font-semibold text-xs mb-0.5">Payment Method</div>
+                        <div class="font-bold text-slate-700" id="r-method">—</div>
+                    </div>
+                    <div>
+                        <div class="text-slate-400 font-semibold text-xs mb-0.5">Cashier</div>
+                        <div class="font-bold text-slate-700" id="r-cashier">—</div>
+                    </div>
+                </div>
+                {{-- Cash change row --}}
+                <div id="r-change-row" class="hidden border-t border-slate-200 pt-2 grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                        <div class="text-slate-400 font-semibold text-xs mb-0.5">Amount Received</div>
+                        <div class="font-bold text-slate-700" id="r-received">—</div>
+                    </div>
+                    <div>
+                        <div class="text-slate-400 font-semibold text-xs mb-0.5">Change</div>
+                        <div class="font-bold text-emerald-600" id="r-change">—</div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Items table --}}
+            <div class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Items Purchased</div>
+            <div class="border border-slate-100 rounded-xl overflow-hidden mb-5">
+                <table class="receipt-table">
+                    <thead>
+                        <tr class="bg-slate-50">
+                            <th>Item</th>
+                            <th class="text-right">Qty</th>
+                            <th class="text-right">Price</th>
+                            <th class="text-right">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="r-items"></tbody>
+                </table>
+            </div>
+
+            {{-- Action buttons --}}
+            <div class="flex gap-3">
+                <button onclick="printReceipt()" class="flex-1 flex items-center justify-center gap-2 border-2 border-slate-200 rounded-2xl py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
+                        <rect x="6" y="14" width="12" height="8" rx="1"/>
+                    </svg>
+                    Print Receipt
+                </button>
+                <button onclick="newSale()" class="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl py-3 text-sm font-bold transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    New Sale
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
-{{-- ══════════ SUCCESS OVERLAY ══════════ --}}
-<div class="overlay" id="overlay-success">
-    <div class="overlay-card">
-        <div class="success-icon-wrap">
-            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+{{-- ══════════ ORDER HISTORY MODAL ══════════ --}}
+<div class="modal-backdrop" id="history-modal">
+    <div class="modal-card wide">
+        <div class="flex items-center justify-between p-6 border-b border-slate-100">
+            <div>
+                <div class="font-black text-slate-800 text-lg">Order History</div>
+                <div class="text-xs text-slate-400 font-semibold mt-0.5">Recent POS transactions</div>
+            </div>
+            <button onclick="closeHistoryModal()" class="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors">
+                <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
         </div>
-        <div class="success-title">Payment Successful</div>
-        <div class="success-amount">RM {{ number_format($order->total_amount, 2) }}</div>
 
-        <div class="success-detail">
-            <div class="success-row"><span class="s-label">Student</span><span class="s-value" id="s-student">{{ $order->customer?->student_name ?? '—' }}</span></div>
-            <div class="success-row"><span class="s-label">Order</span><span class="s-value">#{{ $order->order_number }}</span></div>
-            <div class="success-row"><span class="s-label">Method</span><span class="s-value" id="s-method">—</span></div>
-            <div class="success-row"><span class="s-label">Remaining Balance</span><span class="s-value green" id="s-balance" style="display:none">—</span><span class="s-value" id="s-balance-na" >N/A</span></div>
+        {{-- Search bar inside history --}}
+        <div class="px-6 pt-4 pb-3">
+            <div class="search-wrap">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="M21 21l-4.35-4.35"/>
+                </svg>
+                <input id="hist-search" type="text" class="search-input" placeholder="Search by Transaction ID, method…" oninput="filterHistory()">
+            </div>
         </div>
 
-        <div class="btn-row" style="margin-bottom:8px">
-            <button class="btn btn-blue" onclick="nextStudent()" type="button">Next Student →</button>
+        <div class="overflow-x-auto px-6 pb-6">
+            <table class="hist-table">
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Date</th>
+                        <th>Total</th>
+                        <th>Method</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="history-tbody"></tbody>
+            </table>
         </div>
-        <div class="countdown-text">Auto-advancing in <strong><span id="s-countdown">2</span>s</strong></div>
     </div>
 </div>
-@endif
 
-{{-- Toast --}}
+{{-- ══════════ TOAST ══════════ --}}
 <div id="toast"></div>
 
+{{-- ══════════ JAVASCRIPT ══════════ --}}
 <script>
-    // ── Live clock ──
-    (function tick() {
-        const n = new Date();
-        document.getElementById('live-clock').textContent =
-            n.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true });
-        setTimeout(tick, 1000);
-    })();
+// ─────────────────────────────────────────────
+// SAMPLE DATA
+// ─────────────────────────────────────────────
+const PRODUCTS = [
+    { id:1,  name:'Potato Chips',      category:'Snacks',      price:3.50, stock:18, emoji:'🍟' },
+    { id:2,  name:'Pringles Original', category:'Snacks',      price:6.90, stock:10, emoji:'🥔' },
+    { id:3,  name:'Mamee Monster',     category:'Snacks',      price:1.20, stock:35, emoji:'🍜' },
+    { id:4,  name:'Mineral Water',     category:'Drinks',      price:1.50, stock:50, emoji:'💧' },
+    { id:5,  name:'Milo Tin',          category:'Drinks',      price:4.50, stock:22, emoji:'☕' },
+    { id:6,  name:'100Plus',           category:'Drinks',      price:2.50, stock:30, emoji:'🥤' },
+    { id:7,  name:'Pen Blue',          category:'Stationery',  price:1.00, stock:45, emoji:'✏️' },
+    { id:8,  name:'Exercise Book',     category:'Stationery',  price:2.00, stock:60, emoji:'📓' },
+    { id:9,  name:'Ruler 30cm',        category:'Stationery',  price:1.50, stock:25, emoji:'📏' },
+    { id:10, name:'Maggi Mee Goreng',  category:'Instant Food',price:1.80, stock:40, emoji:'🍜' },
+    { id:11, name:'Ibumie Penang',     category:'Instant Food',price:2.00, stock:28, emoji:'🍲' },
+    { id:12, name:'Myojo Curry',       category:'Instant Food',price:2.20, stock:3,  emoji:'🍛' },
+    { id:13, name:'White Correction',  category:'Stationery',  price:1.80, stock:15, emoji:'🖊️' },
+    { id:14, name:'Dutch Lady Milk',   category:'Drinks',      price:3.20, stock:0,  emoji:'🥛' },
+    { id:15, name:'Oreo Cookies',      category:'Snacks',      price:4.20, stock:12, emoji:'🍪' },
+    { id:16, name:'Pencil Case',       category:'Others',      price:5.50, stock:8,  emoji:'🎒' },
+];
 
-    // ── Overlay helpers ──
-    const NFC_URL  = @json(isset($order) ? route('orders.pay.nfc', $order) : '');
-    const CASH_URL = @json(isset($order) ? route('orders.pay.cash', $order) : '');
-    const CSRF     = document.querySelector('meta[name="csrf-token"]').content;
+const SAMPLE_HISTORY = [
+    { id:'POS-000042', date:'2026-07-13 09:14', total:12.50, method:'Cash',     status:'Paid',      cashier:'Ahmad Rozi' },
+    { id:'POS-000041', date:'2026-07-13 08:55', total:8.70,  method:'DuitNow',  status:'Paid',      cashier:'Ahmad Rozi' },
+    { id:'POS-000040', date:'2026-07-12 14:30', total:3.00,  method:'Card',     status:'Paid',      cashier:'Nurul Ain'  },
+    { id:'POS-000039', date:'2026-07-12 11:18', total:17.40, method:'Cash',     status:'Paid',      cashier:'Ahmad Rozi' },
+    { id:'POS-000038', date:'2026-07-12 10:02', total:5.50,  method:'Cash',     status:'Paid',      cashier:'Nurul Ain'  },
+    { id:'POS-000037', date:'2026-07-11 15:45', total:22.00, method:'DuitNow',  status:'Paid',      cashier:'Ahmad Rozi' },
+    { id:'POS-000036', date:'2026-07-11 13:22', total:9.10,  method:'Card',     status:'Paid',      cashier:'Ahmad Rozi' },
+    { id:'POS-000035', date:'2026-07-11 09:08', total:4.50,  method:'Cash',     status:'Paid',      cashier:'Nurul Ain'  },
+    { id:'POS-000034', date:'2026-07-10 16:55', total:14.20, method:'Cash',     status:'Paid',      cashier:'Ahmad Rozi' },
+    { id:'POS-000033', date:'2026-07-10 12:30', total:6.90,  method:'DuitNow',  status:'Paid',      cashier:'Ahmad Rozi' },
+];
 
-    function openOverlay(id) {
-        document.getElementById(id).classList.add('active');
-        if (id === 'overlay-nfc') {
-            const inp = document.getElementById('nfc-input');
-            inp.value = '';
-            setTimeout(() => inp.focus(), 80);
-        }
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+let cart       = [];   // { product, qty }
+let payMethod  = 'Cash';
+let activeCat  = 'All';
+let txnCounter = 43;
+
+// ─────────────────────────────────────────────
+// LIVE CLOCK
+// ─────────────────────────────────────────────
+(function tick() {
+    const n = new Date();
+    const el = document.getElementById('live-clock');
+    if (el) el.textContent = n.toLocaleTimeString('en-MY', { hour:'2-digit', minute:'2-digit', hour12:true });
+    setTimeout(tick, 1000);
+})();
+
+// ─────────────────────────────────────────────
+// PRODUCT GRID
+// ─────────────────────────────────────────────
+function renderProducts() {
+    const q   = document.getElementById('search-input').value.toLowerCase().trim();
+    const grid = document.getElementById('product-grid');
+    const noP  = document.getElementById('no-products');
+    const lbl  = document.getElementById('product-count-label');
+
+    let list = PRODUCTS;
+    if (activeCat !== 'All') list = list.filter(p => p.category === activeCat);
+    if (q) list = list.filter(p => p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q));
+
+    lbl.textContent = `${list.length} product${list.length !== 1 ? 's' : ''} found`;
+
+    if (list.length === 0) {
+        grid.innerHTML = '';
+        noP.classList.remove('hidden');
+        return;
     }
-    function closeOverlay(id) { document.getElementById(id).classList.remove('active'); }
+    noP.classList.add('hidden');
 
-    function openNfc()   { openOverlay('overlay-nfc'); }
-    function closeNfc()  { closeOverlay('overlay-nfc'); }
-    function openCash()  { openOverlay('overlay-cash'); }
-    function closeCash() { closeOverlay('overlay-cash'); }
+    grid.innerHTML = list.map(p => {
+        const stockClass = p.stock === 0 ? 'stock-out' : p.stock <= 5 ? 'stock-low' : 'stock-ok';
+        const stockLabel = p.stock === 0 ? 'Out of stock' : `Stock: ${p.stock}`;
+        const disabled   = p.stock === 0 ? 'disabled' : '';
+        return `
+        <div class="product-card" onclick="${p.stock > 0 ? `addToCart(${p.id})` : ''}">
+            <div class="product-img" style="background:${catColor(p.category)};">${p.emoji}</div>
+            <div class="p-3 flex flex-col gap-2 flex-1">
+                <div>
+                    <div class="font-bold text-slate-800 text-sm leading-tight">${p.name}</div>
+                    <div class="text-xs text-slate-400 font-semibold mt-0.5">${p.category}</div>
+                </div>
+                <div class="flex items-center justify-between">
+                    <div class="font-black text-blue-600 text-base">RM${p.price.toFixed(2)}</div>
+                    <span class="text-xs font-bold px-2 py-0.5 rounded-full ${stockClass}">${stockLabel}</span>
+                </div>
+                <button class="add-btn" ${disabled} onclick="event.stopPropagation(); ${p.stock > 0 ? `addToCart(${p.id})` : ''}">
+                    ${p.stock === 0 ? '— Unavailable' : '+ Add'}
+                </button>
+            </div>
+        </div>`;
+    }).join('');
+}
 
-    // ── Keyboard-wedge NFC scanner ──
-    document.addEventListener('keydown', e => {
-        const nfcOpen = document.getElementById('overlay-nfc').classList.contains('active');
-        if (!nfcOpen) return;
-        const inp = document.getElementById('nfc-input');
-        if (document.activeElement !== inp) inp.focus();
-        if (e.key === 'Enter') {
-            const uid = inp.value.trim();
-            if (uid) doNfcPayment(uid);
-            inp.value = '';
-        }
+function catColor(cat) {
+    const m = { Snacks:'#fef3c7', Drinks:'#dbeafe', Stationery:'#ede9fe', 'Instant Food':'#fce7f3', Others:'#dcfce7' };
+    return m[cat] || '#f1f5f9';
+}
+
+function filterProducts() { renderProducts(); }
+
+function selectCat(el) {
+    document.querySelectorAll('.cat-pill').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    activeCat = el.dataset.cat;
+    renderProducts();
+}
+
+// ─────────────────────────────────────────────
+// CART
+// ─────────────────────────────────────────────
+function addToCart(id) {
+    const p = PRODUCTS.find(x => x.id === id);
+    if (!p || p.stock === 0) return;
+
+    const existing = cart.find(c => c.product.id === id);
+    if (existing) {
+        if (existing.qty >= p.stock) { toast(`Max stock reached (${p.stock})`); return; }
+        existing.qty++;
+    } else {
+        cart.push({ product: p, qty: 1 });
+    }
+    renderCart();
+    toast(`${p.name} added ✓`);
+}
+
+function changeQty(id, delta) {
+    const item = cart.find(c => c.product.id === id);
+    if (!item) return;
+    item.qty += delta;
+    if (item.qty <= 0) {
+        cart = cart.filter(c => c.product.id !== id);
+    } else if (item.qty > item.product.stock) {
+        item.qty = item.product.stock;
+        toast(`Max stock: ${item.product.stock}`);
+    }
+    renderCart();
+}
+
+function removeFromCart(id) {
+    cart = cart.filter(c => c.product.id !== id);
+    renderCart();
+}
+
+function clearCart() {
+    if (!cart.length) return;
+    cart = [];
+    renderCart();
+    toast('Cart cleared');
+}
+
+function renderCart() {
+    const wrap   = document.getElementById('cart-items-wrap');
+    const empty  = document.getElementById('empty-cart-msg');
+    const badge  = document.getElementById('cart-count-badge');
+    const clearB = document.getElementById('clear-cart-btn');
+    const totSec = document.getElementById('totals-section');
+    const paySec = document.getElementById('payment-section');
+    const chkSec = document.getElementById('checkout-section');
+
+    if (cart.length === 0) {
+        empty.style.display = 'flex';
+        wrap.querySelectorAll('.cart-item-row').forEach(el => el.remove());
+        badge.classList.add('hidden');
+        clearB.classList.add('hidden');
+        totSec.style.display = 'none';
+        paySec.style.display = 'none';
+        chkSec.style.display = 'none';
+        return;
+    }
+
+    empty.style.display = 'none';
+    badge.classList.remove('hidden');
+    clearB.classList.remove('hidden');
+    totSec.style.display = 'block';
+    paySec.style.display = 'block';
+    chkSec.style.display = 'block';
+
+    const totalItems = cart.reduce((s, c) => s + c.qty, 0);
+    badge.textContent = totalItems;
+
+    // Rebuild items
+    wrap.querySelectorAll('.cart-item-row').forEach(el => el.remove());
+    const frag = document.createDocumentFragment();
+    cart.forEach(({ product: p, qty }) => {
+        const lineTotal = (p.price * qty).toFixed(2);
+        const div = document.createElement('div');
+        div.className = 'cart-item-row py-3 border-b border-slate-100 last:border-0';
+        div.dataset.id = p.id;
+        div.innerHTML = `
+        <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0" style="background:${catColor(p.category)};">${p.emoji}</div>
+            <div class="flex-1 min-w-0">
+                <div class="font-bold text-slate-800 text-sm leading-tight truncate">${p.name}</div>
+                <div class="text-xs text-slate-400 font-semibold">RM${p.price.toFixed(2)} each</div>
+                <div class="flex items-center gap-3 mt-2">
+                    <button class="qty-btn" onclick="changeQty(${p.id}, -1)">−</button>
+                    <span class="font-black text-slate-700 text-sm w-5 text-center">${qty}</span>
+                    <button class="qty-btn" onclick="changeQty(${p.id}, 1)">+</button>
+                    <span class="ml-auto font-black text-blue-600 text-base">RM${lineTotal}</span>
+                </div>
+            </div>
+        </div>
+        <button onclick="removeFromCart(${p.id})" class="mt-1.5 ml-12 text-xs font-semibold text-slate-300 hover:text-red-400 transition-colors">
+            Remove
+        </button>`;
+        frag.appendChild(div);
+    });
+    wrap.appendChild(frag);
+
+    updateTotals();
+    calcChange();
+    updateCheckoutBtn();
+}
+
+function updateTotals() {
+    const subtotal = cart.reduce((s, c) => s + c.product.price * c.qty, 0);
+    document.getElementById('subtotal-val').textContent = `RM${subtotal.toFixed(2)}`;
+    document.getElementById('discount-val').textContent = `RM0.00`;
+    document.getElementById('tax-val').textContent       = `RM0.00`;
+    document.getElementById('total-val').textContent     = `RM${subtotal.toFixed(2)}`;
+}
+
+function getTotal() {
+    return cart.reduce((s, c) => s + c.product.price * c.qty, 0);
+}
+
+// ─────────────────────────────────────────────
+// PAYMENT METHOD
+// ─────────────────────────────────────────────
+function selectPayMethod(el) {
+    document.querySelectorAll('.pay-tab').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    payMethod = el.dataset.method;
+
+    ['Cash','DuitNow','Card'].forEach(m => {
+        const p = document.getElementById(`panel-${m}`);
+        if (p) p.style.display = m === payMethod ? 'block' : 'none';
+    });
+    updateCheckoutBtn();
+}
+
+function calcChange() {
+    const received = parseFloat(document.getElementById('cash-received').value) || 0;
+    const total    = getTotal();
+    const change   = received - total;
+    document.getElementById('change-val').textContent = change >= 0 ? `RM${change.toFixed(2)}` : `RM0.00`;
+    updateCheckoutBtn();
+}
+
+function updateCheckoutBtn() {
+    const btn   = document.getElementById('checkout-btn');
+    if (!btn) return;
+    const total = getTotal();
+    let disabled = cart.length === 0;
+
+    if (payMethod === 'Cash' && !disabled) {
+        const received = parseFloat(document.getElementById('cash-received').value) || 0;
+        disabled = received < total;
+        btn.textContent = disabled ? `Enter RM${total.toFixed(2)} or more` : 'Complete Payment';
+    } else {
+        btn.innerHTML = `<span class="flex items-center justify-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+            </svg>Complete Payment</span>`;
+    }
+    btn.disabled = disabled;
+}
+
+// ─────────────────────────────────────────────
+// CHECKOUT
+// ─────────────────────────────────────────────
+function doCheckout() {
+    if (cart.length === 0) return;
+    const total    = getTotal();
+    const received = parseFloat(document.getElementById('cash-received').value) || 0;
+    const change   = payMethod === 'Cash' ? (received - total) : 0;
+    const txnId    = `POS-${String(txnCounter++).padStart(6,'0')}`;
+    const now      = new Date();
+    const dateStr  = now.toLocaleDateString('en-MY', { day:'2-digit', month:'short', year:'numeric' })
+                   + ' ' + now.toLocaleTimeString('en-MY', { hour:'2-digit', minute:'2-digit', hour12:true });
+
+    // Populate receipt
+    document.getElementById('r-total').textContent   = `RM${total.toFixed(2)}`;
+    document.getElementById('r-txn-id').textContent  = txnId;
+    document.getElementById('r-date').textContent    = dateStr;
+    document.getElementById('r-method').textContent  = payMethod === 'DuitNow' ? 'DuitNow QR' : payMethod;
+    document.getElementById('r-cashier').textContent = '{{ auth()->user()->name ?? "Cashier" }}';
+
+    const changeRow = document.getElementById('r-change-row');
+    if (payMethod === 'Cash') {
+        changeRow.classList.remove('hidden');
+        changeRow.style.display = 'grid';
+        document.getElementById('r-received').textContent = `RM${received.toFixed(2)}`;
+        document.getElementById('r-change').textContent   = `RM${change.toFixed(2)}`;
+    } else {
+        changeRow.classList.add('hidden');
+        changeRow.style.display = 'none';
+    }
+
+    // Receipt items
+    const tbody = document.getElementById('r-items');
+    tbody.innerHTML = cart.map(({ product:p, qty }) => `
+        <tr>
+            <td>${p.emoji} ${p.name}</td>
+            <td class="text-right font-semibold">${qty}</td>
+            <td class="text-right">RM${p.price.toFixed(2)}</td>
+            <td class="text-right font-bold text-slate-800">RM${(p.price * qty).toFixed(2)}</td>
+        </tr>`).join('') + `
+        <tr class="bg-blue-50">
+            <td colspan="3" class="font-black text-blue-800 text-right">TOTAL</td>
+            <td class="text-right font-black text-blue-800">RM${total.toFixed(2)}</td>
+        </tr>`;
+
+    // Add to sample history
+    SAMPLE_HISTORY.unshift({
+        id: txnId, date: dateStr, total,
+        method: payMethod === 'DuitNow' ? 'DuitNow QR' : payMethod,
+        status: 'Paid', cashier: '{{ auth()->user()->name ?? "Cashier" }}'
     });
 
-    function simulateTap(uid) { doNfcPayment(uid); }
+    openModal('receipt-modal');
+}
 
-    // ── NFC payment ──
-    function doNfcPayment(uid) {
-        const inp = document.getElementById('nfc-input');
-        inp.disabled = true;
+function printReceipt() {
+    toast('🖨️ Sending to printer… (demo)');
+}
 
-        fetch(NFC_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
-            body: JSON.stringify({ card_uid: uid })
-        })
-        .then(r => r.json().then(d => ({ ok: r.ok, d })))
-        .then(({ ok, d }) => {
-            inp.disabled = false;
-            if (ok && d.success) {
-                closeNfc();
-                document.getElementById('s-method').textContent = 'NFC Card';
-                const balEl = document.getElementById('s-balance');
-                const balNa = document.getElementById('s-balance-na');
-                balEl.textContent = 'RM ' + d.remaining_balance;
-                balEl.style.display = '';
-                balNa.style.display = 'none';
-                openOverlay('overlay-success');
-                startCountdown();
-            } else {
-                toast(d.message || 'Card payment failed. Try again.');
-                inp.value = ''; inp.focus();
-            }
-        })
-        .catch(() => { inp.disabled = false; toast('Connection error. Retry.'); });
-    }
+function newSale() {
+    closeModal('receipt-modal');
+    cart = [];
+    document.getElementById('cash-received').value = '';
+    renderCart();
+    toast('✅ Ready for new sale!');
+}
 
-    // ── Cash payment ──
-    function confirmCash() {
-        fetch(CASH_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' }
-        })
-        .then(r => r.json())
-        .then(d => {
-            if (d.success) {
-                closeCash();
-                document.getElementById('s-method').textContent = 'Cash';
-                document.getElementById('s-balance').style.display = 'none';
-                document.getElementById('s-balance-na').style.display = '';
-                openOverlay('overlay-success');
-                startCountdown();
-            } else {
-                toast(d.message || 'Payment failed. Try again.');
-            }
-        })
-        .catch(() => toast('Connection error. Retry.'));
-    }
+// ─────────────────────────────────────────────
+// ORDER HISTORY
+// ─────────────────────────────────────────────
+function openHistoryModal() {
+    renderHistory(SAMPLE_HISTORY);
+    openModal('history-modal');
+}
+function closeHistoryModal() { closeModal('history-modal'); }
 
-    // ── Next student ──
-    function nextStudent() { window.location.href = "{{ route('payment.index') }}"; }
+function renderHistory(list) {
+    const tbody = document.getElementById('history-tbody');
+    const statusBadge = s => s === 'Paid'
+        ? '<span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 text-xs font-bold px-2.5 py-1 rounded-full">✓ Paid</span>'
+        : '<span class="inline-flex items-center bg-amber-50 text-amber-700 text-xs font-bold px-2.5 py-1 rounded-full">Pending</span>';
+    const methodIcon = m => ({ Cash:'💵', DuitNow:'📱','DuitNow QR':'📱', Card:'💳' }[m] || '💰');
 
-    let countdownIv = null;
-    function startCountdown() {
-        let t = 2;
-        const el = document.getElementById('s-countdown');
-        el.textContent = t;
-        clearInterval(countdownIv);
-        countdownIv = setInterval(() => {
-            t--;
-            el.textContent = t;
-            if (t <= 0) { clearInterval(countdownIv); nextStudent(); }
-        }, 1000);
-    }
+    tbody.innerHTML = list.length === 0
+        ? `<tr><td colspan="6" class="text-center py-8 text-slate-400 font-semibold">No transactions found</td></tr>`
+        : list.map(h => `
+        <tr>
+            <td><span class="font-black text-blue-600">${h.id}</span></td>
+            <td class="text-slate-600">${h.date}</td>
+            <td><span class="font-black text-slate-800">RM${parseFloat(h.total).toFixed(2)}</span></td>
+            <td><span class="font-semibold">${methodIcon(h.method)} ${h.method}</span></td>
+            <td>${statusBadge(h.status)}</td>
+            <td><button onclick="toast('Details for ${h.id}')" class="text-xs font-bold text-blue-500 hover:text-blue-700">View</button></td>
+        </tr>`).join('');
+}
 
-    // ── Toast ──
-    let toastTimer = null;
-    function toast(msg) {
-        const el = document.getElementById('toast');
-        el.textContent = msg;
-        el.classList.add('show');
-        clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
-    }
+function filterHistory() {
+    const q = document.getElementById('hist-search').value.toLowerCase();
+    const filtered = SAMPLE_HISTORY.filter(h =>
+        h.id.toLowerCase().includes(q) ||
+        h.method.toLowerCase().includes(q) ||
+        h.cashier.toLowerCase().includes(q) ||
+        h.status.toLowerCase().includes(q)
+    );
+    renderHistory(filtered);
+}
+
+// ─────────────────────────────────────────────
+// MODAL HELPERS
+// ─────────────────────────────────────────────
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// Close on backdrop click
+document.querySelectorAll('.modal-backdrop').forEach(el => {
+    el.addEventListener('click', e => {
+        if (e.target === el) el.classList.remove('open');
+    });
+});
+
+// ─────────────────────────────────────────────
+// TOAST
+// ─────────────────────────────────────────────
+let _toastTimer = null;
+function toast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+renderProducts();
+renderCart();
 </script>
 </body>
 </html>
