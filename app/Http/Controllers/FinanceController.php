@@ -20,7 +20,6 @@ class FinanceController extends Controller
         $data['end'] = $end;
         $data['trend'] = collect($data['trend']);
         $data['expenseBreakdown'] = collect($data['expenseBreakdown'])->map(fn (array $expense) => (object) $expense);
-        $data['recentTransactions'] = collect($data['recentTransactions']);
 
         return view('finance', $data);
     }
@@ -142,60 +141,6 @@ class FinanceController extends Controller
             ])
             ->all();
 
-        $recentPayments = Payment::query()
-            ->leftJoin('orders', 'orders.id', '=', 'payments.order_id')
-            ->leftJoin('customers', 'customers.id', '=', 'orders.customer_id')
-            ->where('payments.status', 'Completed')
-            ->selectRaw(
-                <<<'SQL'
-                payments.payment_reference as id,
-                CONCAT('Payment for ', COALESCE(orders.order_number, 'missing order')) as description,
-                COALESCE(customers.parent_name, customers.student_name, 'Unknown customer') as party,
-                payments.paid_at as happened_at,
-                payments.amount as amount,
-                'Income' as type,
-                payments.status as status
-                SQL
-            )
-            ->latest('payments.paid_at')
-            ->limit(8)
-            ->get();
-
-        $recentExpenses = PurchaseOrder::query()
-            ->leftJoin('suppliers', 'suppliers.id', '=', 'purchase_orders.supplier_id')
-            ->whereIn('purchase_orders.status', ['Received', 'Completed'])
-            ->selectRaw(
-                <<<'SQL'
-                purchase_orders.po_number as id,
-                CONCAT('Purchase order ', purchase_orders.po_number) as description,
-                COALESCE(suppliers.company_name, suppliers.name, 'Unknown supplier') as party,
-                purchase_orders.order_date as happened_at,
-                purchase_orders.total_amount as amount,
-                'Expense' as type,
-                purchase_orders.status as status
-                SQL
-            )
-            ->latest('purchase_orders.order_date')
-            ->limit(8)
-            ->get();
-
-        $recentTransactions = $recentPayments
-            ->merge($recentExpenses)
-            ->sortByDesc('happened_at')
-            ->take(10)
-            ->values()
-            ->map(fn ($transaction) => [
-                'id' => $transaction->id,
-                'description' => $transaction->description,
-                'party' => $transaction->party,
-                'date_label' => $transaction->happened_at ? Carbon::parse($transaction->happened_at)->format('d M Y') : 'N/A',
-                'sort_date' => (string) $transaction->happened_at,
-                'amount' => (float) $transaction->amount,
-                'type' => $transaction->type,
-                'status' => $transaction->status,
-            ])
-            ->all();
-
-        return compact('metrics', 'trend', 'expenseBreakdown', 'recentTransactions', 'income', 'expenses', 'profit');
+        return compact('metrics', 'trend', 'expenseBreakdown');
     }
 }

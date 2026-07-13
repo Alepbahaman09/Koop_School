@@ -20,7 +20,7 @@
 **Features:**
 - ✅ View all orders from mobile app
 - ✅ Search orders by order number or customer name
-- ✅ Filter by status (Pending, Processing, Packed, Ready, Completed, Cancelled)
+- ✅ Filter by status (Processing, Ready, Completed, Cancelled)
 - ✅ Filter by payment status (Unpaid, Partial, Paid, Refunded)
 - ✅ View order details with customer info
 - ✅ View all items in each order
@@ -30,12 +30,10 @@
 - ✅ Delete orders (if no payments made)
 
 **Order Status Flow:**
-1. **Pending** - Order received from mobile app
-2. **Processing** - Admin starts preparing order
-3. **Packed** - Items packed and ready
-4. **Ready** - Order ready for pickup
-5. **Completed** - Order delivered to customer
-6. **Cancelled** - Order cancelled
+1. **Processing** - Order received and being prepared
+2. **Ready** - Order ready for pickup
+3. **Completed** - Order delivered to customer
+4. **Cancelled** - Order cancelled
 
 **When admin updates status:**
 - Saves in `order_status_history` table
@@ -112,12 +110,11 @@
 ### Update Order Status & Track Preparation
 
 **Process:**
-1. Customer places order via mobile app → Status: **Pending**
+1. Customer places order via mobile app → Status: **Processing**
 2. Admin views order at `/orders`
-3. Admin clicks "Update Status" → Status: **Processing**
-4. Admin packs items → Status: **Packed**
-5. Admin marks ready for pickup → Status: **Ready**
-6. Customer picks up → Status: **Completed**
+3. Admin prepares the order
+4. Admin marks ready for pickup → Status: **Ready**
+5. Customer picks up → Status: **Completed**
 
 **Every status change:**
 - Records in `order_status_history` table
@@ -137,22 +134,16 @@ Response includes:
 ```json
 {
   "order_number": "KS-20250101-0001",
-  "status": "Packed",
+  "status": "Ready",
   "statusHistory": [
     {
-      "status": "Pending",
+      "status": "Processing",
       "created_at": "2025-01-01 10:00:00",
       "user": "Admin Name",
       "notes": "Order received"
     },
     {
-      "status": "Processing",
-      "created_at": "2025-01-01 10:30:00",
-      "user": "Admin Name",
-      "notes": "Started preparation"
-    },
-    {
-      "status": "Packed",
+      "status": "Ready",
       "created_at": "2025-01-01 11:00:00",
       "user": "Admin Name",
       "notes": "Items packed and ready"
@@ -176,7 +167,7 @@ Customer sees:
 Customer (Mobile App) 
   → POST /api/v1/orders 
   → Database (orders, order_items) 
-  → Admin sees in /orders (Status: Pending)
+  → Admin sees in /orders (Status: Processing)
 ```
 
 ### Order Processing Flow

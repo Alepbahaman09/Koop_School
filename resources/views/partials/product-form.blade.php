@@ -38,6 +38,3 @@
         </div>
     </div>
 </label>
-<label class="flex items-center gap-2 self-end pb-2 text-sm font-extrabold text-slate-700">
-    <input name="is_active" value="1" type="checkbox" @checked(old('is_active', $product?->is_active ?? true)) class="rounded border-slate-300 text-indigo-600"> Available in mobile app
-</label>

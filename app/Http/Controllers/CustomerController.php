@@ -13,15 +13,9 @@ class CustomerController extends Controller
         $query = Customer::query()
             ->select([
                 'id',
-                'student_id',
                 'parent_name',
-                'student_name',
                 'email',
                 'phone',
-                'class',
-                'address',
-                'latitude',
-                'longitude',
                 'is_active',
                 'created_at',
             ])
@@ -37,8 +31,6 @@ class CustomerController extends Controller
         if ($request->search) {
             $query->where(function ($q) use ($request) {
                 $q->where('parent_name', 'like', '%'.$request->search.'%')
-                    ->orWhere('student_name', 'like', '%'.$request->search.'%')
-                    ->orWhere('student_id', 'like', '%'.$request->search.'%')
                     ->orWhere('email', 'like', '%'.$request->search.'%');
             });
         }

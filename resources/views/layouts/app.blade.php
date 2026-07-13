@@ -9,14 +9,13 @@
         ['label' => 'Cashier Terminal', 'route' => 'payment.index', 'icon' => 'M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3H3V5Zm0 4h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Zm4 4h6M7 16h3'],
         ['label' => 'Orders', 'route' => 'orders.index', 'icon' => 'M6 6h15l-1.5 9h-12L6 6Zm0 0L5 3H2m7 18a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm9 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z'],
         ['label' => 'Products', 'route' => 'products.index', 'icon' => 'M20 7 12 3 4 7l8 4 8-4Zm0 0v10l-8 4m8-14-8 4m0 10-8-4V7m8 14V11'],
+        ['label' => 'Home Banners', 'route' => 'home-banners.index', 'icon' => 'M4 6h16v12H4zM7 9h5M7 13h10'],
         ['label' => 'Users', 'route' => 'users.index', 'icon' => 'M17 20h5v-2a4 4 0 0 0-4-4h-1M9 20H4v-2a4 4 0 0 1 4-4h1m8-4a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM9 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z'],
     ];
 
     $toolItems = [
         ['label' => 'Analytics', 'route' => 'analytics', 'icon' => 'M4 19V5m5 14V9m5 10V3m5 16v-7'],
-        ['label' => 'Transactions', 'route' => 'transactions.index', 'icon' => 'M4 7h16M4 12h16M4 17h10m4-1 2 2 3-4'],
         ['label' => 'Finance', 'route' => 'finance', 'icon' => 'M12 6v12m4-8c0-2.2-1.8-4-4-4s-4 1.2-4 3 1.8 3 4 3 4 1.2 4 3-1.8 3-4 3-4-1.8-4-4'],
-        ['label' => 'Notifications', 'route' => 'notifications', 'icon' => 'M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Zm-8 12h4'],
         ['label' => 'Settings', 'route' => 'settings', 'icon' => 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8-3a8 8 0 0 0-.11-1.32l2.03-1.58-2-3.46-2.39.96a8.15 8.15 0 0 0-2.28-1.32L15 2h-4l-.36 3.28A8.15 8.15 0 0 0 8.36 6.6l-2.39-.96-2 3.46 2.03 1.58A8 8 0 0 0 6 12c0 .45.04.89.11 1.32l-2.03 1.58 2 3.46 2.39-.96a8.15 8.15 0 0 0 2.28 1.32L11 22h4l.36-3.28a8.15 8.15 0 0 0 2.28-1.32l2.39.96 2-3.46-2.03-1.58c.07-.43.11-.87.11-1.32Z'],
     ];
 @endphp
@@ -97,7 +96,7 @@
                 </nav>
 
                 <div class="border-t border-slate-100 p-4">
-                    <a href="{{ route('profile') }}" class="flex items-center gap-3 rounded-lg p-3 hover:bg-slate-50">
+                    <a href="{{ route('settings') }}" class="flex items-center gap-3 rounded-lg p-3 hover:bg-slate-50">
                         <div class="grid h-10 w-10 place-items-center rounded-lg bg-indigo-600 text-sm font-bold text-white">
                             {{ strtoupper(substr(auth()->user()->name ?? 'A', 0, 1)) }}
                         </div>
@@ -143,7 +142,7 @@
                                     <span class="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-rose-500 px-1 text-[10px] font-extrabold text-white">{{ $unreadNotifications > 9 ? '9+' : $unreadNotifications }}</span>
                                 @endif
                             </a>
-                            <a href="{{ route('profile') }}" class="grid h-10 w-10 place-items-center rounded-lg bg-indigo-600 text-sm font-bold text-white" title="Profile">
+                            <a href="{{ route('settings') }}" class="grid h-10 w-10 place-items-center rounded-lg bg-indigo-600 text-sm font-bold text-white" title="Account settings">
                                 {{ strtoupper(substr(auth()->user()->name ?? 'A', 0, 1)) }}
                             </a>
                         </div>

@@ -65,7 +65,7 @@ class OrderController extends Controller
             $products = [];
 
             foreach ($request->items as $item) {
-                $product = Product::where('is_active', true)->lockForUpdate()->find($item['product_id']);
+                $product = Product::lockForUpdate()->find($item['product_id']);
 
                 if (! $product) {
                     DB::rollBack();
@@ -94,7 +94,7 @@ class OrderController extends Controller
                 'mobile_reference' => $request->mobile_reference,
                 'customer_id' => $customerId,
                 'user_id' => $userId,
-                'status' => 'Pending',
+                'status' => Order::DEFAULT_STATUS,
                 'subtotal' => $subtotal,
                 'tax' => $tax,
                 'discount' => $discount,
@@ -170,7 +170,7 @@ class OrderController extends Controller
     public function updateStatus(Request $request, $id)
     {
         $validator = Validator::make($request->all(), [
-            'status' => 'required|in:Pending,Processing,Packed,Ready,Completed,Cancelled',
+            'status' => ['required', Rule::in(Order::STATUSES)],
         ]);
 
         if ($validator->fails()) {

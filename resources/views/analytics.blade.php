@@ -88,25 +88,12 @@
     </article>
 </section>
 
-<section class="grid gap-5 xl:grid-cols-2">
+<section>
     <article class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
-        <h2 class="text-sm font-extrabold text-slate-950">Order Fulfilment</h2>
-        <p class="mt-1 text-xs font-semibold text-slate-400">Distribution by current order status</p>
-        <div class="mt-5 space-y-4">
-            @foreach ($statuses->take(4) as $status)
-                <div>
-                    <div class="mb-1.5 flex justify-between text-xs"><span class="font-bold text-slate-600">{{ $status['label'] }}</span><span class="font-extrabold text-slate-900">{{ number_format($status['percentage'], 0) }}%</span></div>
-                    <div class="h-2 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full {{ $loop->iteration === 1 ? 'bg-indigo-500' : ($loop->iteration === 2 ? 'bg-emerald-400' : ($loop->iteration === 3 ? 'bg-amber-400' : 'bg-sky-400')) }}" style="width: {{ $status['percentage'] }}%"></div></div>
-                </div>
-            @endforeach
-        </div>
-    </article>
-
-    <article class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
-        <h2 class="text-sm font-extrabold text-slate-950">Top Selling Products</h2>
+        <h2 class="text-sm font-extrabold text-slate-950">Top Selling Items</h2>
         <p class="mt-1 text-xs font-semibold text-slate-400">Best performers in the selected period</p>
         <div class="mt-3 divide-y divide-slate-100">
-            @forelse ($topProducts->take(4) as $product)
+            @forelse ($topProducts as $product)
                 <div class="flex items-center gap-3 py-3">
                     <div class="h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-indigo-100 to-violet-50">
                         @if ($product->image_url)
@@ -119,7 +106,7 @@
                     <p class="text-sm font-extrabold text-indigo-600">RM {{ number_format($product->revenue, 0) }}</p>
                 </div>
             @empty
-                <p class="py-10 text-center text-sm font-semibold text-slate-400">No product sales yet.</p>
+                <p class="py-10 text-center text-sm font-semibold text-slate-400">No item sales yet.</p>
             @endforelse
         </div>
     </article>

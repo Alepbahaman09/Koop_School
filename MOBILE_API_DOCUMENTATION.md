@@ -70,7 +70,7 @@ http://your-domain.com/api/v1
     "id": 1,
     "order_number": "KS-20250101-0001",
     "customer_id": 1,
-    "status": "Pending",
+    "status": "Processing",
     "subtotal": 150.00,
     "tax": 5.50,
     "discount": 0,
@@ -171,12 +171,12 @@ http://your-domain.com/api/v1
 ```
 
 **Valid Status Values:**
-- Pending
 - Processing
-- Packed
 - Ready
 - Completed
 - Cancelled
+
+Completed transactions automatically move the related order to `Processing`.
 
 ---
 
