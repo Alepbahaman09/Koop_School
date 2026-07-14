@@ -9,6 +9,7 @@ use App\Http\Controllers\HomeBannerController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\PaymentController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login');
@@ -38,6 +39,10 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('users', [CustomerController::class, 'index'])->name('users.index');
     Route::get('users/{customer}', [CustomerController::class, 'show'])->name('users.show');
 
+    Route::get('payments', [PaymentController::class, 'index'])->name('payment.index');
+    Route::get('orders/{order}/pay', [PaymentController::class, 'checkout'])->name('orders.pay');
+    Route::post('orders/{order}/pay/nfc', [PaymentController::class, 'processNfcPayment'])->name('orders.pay.nfc');
+    Route::post('orders/{order}/pay/cash', [PaymentController::class, 'processCashPayment'])->name('orders.pay.cash');
     Route::get('finance', [FinanceController::class, 'index'])->name('finance');
     Route::get('finance/export', [FinanceController::class, 'export'])->name('finance.export');
 

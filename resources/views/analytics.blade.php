@@ -114,7 +114,7 @@
 @endsection
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js/dist/chart.umd.min.js"></script>
 <script>
     const palette = ['#6366f1', '#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#a855f7'];
     document.querySelectorAll('.category-key').forEach((key, index) => key.style.backgroundColor = palette[index % palette.length]);
