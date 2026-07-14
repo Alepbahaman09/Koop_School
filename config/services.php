@@ -36,6 +36,12 @@ return [
         'ca_bundle' => env('SUPABASE_CA_BUNDLE', storage_path('app/certs/cacert.pem')),
     ],
 
+    'firebase' => [
+        'project_id' => env('FIREBASE_PROJECT_ID'),
+        'credentials' => env('GOOGLE_APPLICATION_CREDENTIALS'),
+        'ca_bundle' => env('FIREBASE_CA_BUNDLE', storage_path('app/certs/cacert.pem')),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

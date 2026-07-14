@@ -1,9 +1,10 @@
 @php
-    $unreadNotifications = \Illuminate\Support\Facades\Cache::remember(
-        'admin_notifications.unread_count',
-        15,
-        fn () => \App\Models\AdminNotification::whereNull('read_at')->count(),
-    );
+    $notificationState = \App\Models\AdminNotification::query()
+        ->toBase()
+        ->selectRaw('COUNT(CASE WHEN read_at IS NULL THEN 1 END) as unread, COALESCE(MAX(id), 0) as latest_id')
+        ->first();
+    $unreadNotifications = (int) $notificationState->unread;
+    $latestNotificationId = (int) $notificationState->latest_id;
     $navItems = [
         ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'M3 13h8V3H3v10Zm10 8h8V3h-8v18ZM3 21h8v-6H3v6Z'],
         ['label' => 'Orders', 'route' => 'orders.index', 'icon' => 'M6 6h15l-1.5 9h-12L6 6Zm0 0L5 3H2m7 18a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm9 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z'],
@@ -33,6 +34,7 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans antialiased text-slate-900">
+        @include('partials.admin-alerts')
         <div class="min-h-screen bg-[#f4f7fb] lg:flex">
             <aside class="hidden w-64 shrink-0 border-r border-slate-200 bg-white lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col">
                 <div class="flex h-20 items-center gap-3 px-7">
@@ -133,13 +135,20 @@
                         </form>
 
                         <div class="ml-auto flex flex-1 items-center justify-end gap-3">
-                            <a href="{{ route('notifications') }}" class="relative grid h-10 w-10 place-items-center rounded-lg text-slate-500 hover:bg-slate-100" title="Notifications">
+                            <a
+                                data-notification-realtime
+                                data-changes-url="{{ route('notifications.changes') }}"
+                                data-supabase-url="{{ config('services.supabase.url') }}"
+                                data-supabase-key="{{ config('services.supabase.anon_key') }}"
+                                data-latest-id="{{ $latestNotificationId }}"
+                                href="{{ route('notifications') }}"
+                                class="relative grid h-10 w-10 place-items-center rounded-lg text-slate-500 hover:bg-slate-100"
+                                title="Notifications"
+                            >
                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                                     <path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4" />
                                 </svg>
-                                @if ($unreadNotifications > 0)
-                                    <span class="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-rose-500 px-1 text-[10px] font-extrabold text-white">{{ $unreadNotifications > 9 ? '9+' : $unreadNotifications }}</span>
-                                @endif
+                                <span data-notification-badge class="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-rose-500 px-1 text-[10px] font-extrabold text-white {{ $unreadNotifications > 0 ? '' : 'hidden' }}">{{ $unreadNotifications > 9 ? '9+' : $unreadNotifications }}</span>
                             </a>
                             <a href="{{ route('settings') }}" class="grid h-10 w-10 place-items-center rounded-lg bg-indigo-600 text-sm font-bold text-white" title="Account settings">
                                 {{ strtoupper(substr(auth()->user()->name ?? 'A', 0, 1)) }}

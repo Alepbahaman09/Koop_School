@@ -4,8 +4,6 @@
 @section('page-title', 'Products')
 
 @section('content')
-@include('partials.admin-alerts')
-
 <section class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <div>
         <h1 class="text-xl font-extrabold text-slate-950">Products</h1>

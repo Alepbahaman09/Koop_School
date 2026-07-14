@@ -4,8 +4,6 @@
 @section('page-title', 'Orders')
 
 @section('content')
-@include('partials.admin-alerts')
-
 @php
     $paymentStatuses = ['Unpaid', 'Partial', 'Paid', 'Refunded'];
     $statusClass = [
@@ -196,7 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function updateStatus(row, status) {
+    function updateStatus(row, status, forceFormUpdate = false) {
         const classes = (statusClasses[status] ?? defaultStatusClasses.join(' ')).split(' ');
 
         row.querySelectorAll('[data-order-status]').forEach((badge) => {
@@ -205,8 +203,9 @@ document.addEventListener('DOMContentLoaded', () => {
             badge.textContent = status;
         });
 
-        const select = row.querySelector('[data-status-form] select[name="status"]');
-        if (select) {
+        const form = row.querySelector('[data-status-form]');
+        const select = form?.querySelector('select[name="status"]');
+        if (select && (forceFormUpdate || form.dataset.edited !== 'true')) {
             select.value = status;
         }
     }
@@ -245,6 +244,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.querySelectorAll('[data-status-form]').forEach((form) => {
+        form.querySelector('select[name="status"]')?.addEventListener('change', () => {
+            form.dataset.edited = 'true';
+        });
+
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
 
@@ -253,6 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const originalText = button.textContent;
             button.disabled = true;
             button.textContent = 'Saving...';
+            form.dataset.edited = 'true';
 
             try {
                 const response = await fetch(form.action, {
@@ -272,9 +276,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     throw new Error(validationMessage || 'Failed to update order status.');
                 }
 
-                updateStatus(row, data.order.status);
+                delete form.dataset.edited;
+                updateStatus(row, data.order.status, true);
                 updateStats(data.stats);
-                addHistory(row, data.history);
+                if (data.history) {
+                    addHistory(row, data.history);
+                }
                 form.querySelector('textarea[name="notes"]').value = '';
                 window.showToast(data.message);
             } catch (error) {

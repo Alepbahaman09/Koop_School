@@ -1,3 +1,5 @@
+import { RealtimeClient } from '@supabase/realtime-js';
+
 const TOAST_DURATION = 4000;
 const BANNER_WIDTH = 1200;
 const BANNER_HEIGHT = 520;
@@ -259,9 +261,138 @@ function setupExpiredBannerCleanup(bannerList) {
     window.setInterval(removeExpiredBanners, BANNER_CLEANUP_INTERVAL);
 }
 
+function setupRealtimeNotifications(listener) {
+    const changesUrl = listener.dataset.changesUrl;
+    const supabaseUrl = listener.dataset.supabaseUrl;
+    const supabaseKey = listener.dataset.supabaseKey;
+    const badge = listener.querySelector('[data-notification-badge]');
+    let latestId = Number(listener.dataset.latestId || 0);
+    let requestInProgress = false;
+    let refreshQueued = false;
+
+    if (! changesUrl || ! supabaseUrl || ! supabaseKey || ! badge) {
+        return;
+    }
+
+    function updateNotificationPage(stats, notifications) {
+        const page = document.querySelector('[data-notification-page]');
+        if (! page) {
+            return;
+        }
+
+        Object.entries(stats).forEach(([name, value]) => {
+            const counter = document.querySelector(`[data-notification-stat="${name}"]`);
+            if (counter) {
+                counter.textContent = Number(value).toLocaleString();
+            }
+        });
+
+        const unreadSummary = document.querySelector('[data-notification-summary-unread]');
+        const totalSummary = document.querySelector('[data-notification-summary-total]');
+        if (unreadSummary) unreadSummary.textContent = Number(stats.unread).toLocaleString();
+        if (totalSummary) totalSummary.textContent = Number(stats.total).toLocaleString();
+
+        const filter = page.dataset.filter;
+        const list = page.querySelector('[data-notification-list]');
+
+        notifications.forEach((notification) => {
+            const matchesFilter = ! filter
+                || filter === 'unread'
+                || filter === notification.category;
+
+            if (matchesFilter && ! list.querySelector(`[data-notification-id="${notification.id}"]`)) {
+                list.insertAdjacentHTML('afterbegin', notification.html);
+            }
+        });
+
+        if (notifications.length > 0) {
+            list.querySelector('[data-notification-empty]')?.remove();
+        }
+    }
+
+    function applyNotificationChanges(changes) {
+        latestId = Number(changes.latest_id || latestId);
+        listener.dataset.latestId = String(latestId);
+
+        const unreadCount = Number(changes.stats.unread || 0);
+        badge.textContent = unreadCount > 9 ? '9+' : String(unreadCount);
+        badge.classList.toggle('hidden', unreadCount === 0);
+
+        changes.notifications.forEach((notification) => {
+            window.showToast(
+                `${notification.title}: ${notification.message}`,
+                notification.severity,
+            );
+        });
+
+        updateNotificationPage(changes.stats, changes.notifications);
+    }
+
+    async function loadNotificationChanges() {
+        if (requestInProgress) {
+            refreshQueued = true;
+            return;
+        }
+
+        requestInProgress = true;
+
+        try {
+            const url = new URL(changesUrl, window.location.origin);
+            url.searchParams.set('after_id', latestId);
+            const response = await fetch(url, {
+                headers: { 'Accept': 'application/json' },
+                cache: 'no-store',
+            });
+
+            if (response.ok) {
+                const changes = await response.json();
+                applyNotificationChanges(changes);
+                refreshQueued = refreshQueued || changes.notifications.length === 20;
+            }
+        } catch (error) {
+            console.error('Notifications could not be updated.', error);
+        } finally {
+            requestInProgress = false;
+
+            if (refreshQueued) {
+                refreshQueued = false;
+                loadNotificationChanges();
+            }
+        }
+    }
+
+    const realtimeUrl = new URL('/realtime/v1', supabaseUrl);
+    realtimeUrl.protocol = realtimeUrl.protocol.replace('http', 'ws');
+    const realtime = new RealtimeClient(realtimeUrl.toString(), {
+        params: { apikey: supabaseKey },
+    });
+    const channel = realtime
+        .channel('admin-notification-signals')
+        .on(
+            'postgres_changes',
+            {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'admin_notification_signals',
+                filter: 'id=eq.1',
+            },
+            loadNotificationChanges,
+        )
+        .subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+                loadNotificationChanges();
+            }
+        });
+
+    window.addEventListener('beforeunload', () => {
+        realtime.removeChannel(channel);
+    }, { once: true });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('[data-banner-image-editor]').forEach(setupBannerImageEditor);
     document.querySelectorAll('[data-banner-list]').forEach(setupExpiredBannerCleanup);
+    document.querySelectorAll('[data-notification-realtime]').forEach(setupRealtimeNotifications);
 
     document.querySelectorAll('[data-initial-toast]').forEach((alert) => {
         const target = alert.dataset.toastTarget

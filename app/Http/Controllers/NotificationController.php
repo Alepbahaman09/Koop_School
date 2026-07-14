@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\AdminNotification;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 
 class NotificationController extends Controller
 {
@@ -21,32 +21,68 @@ class NotificationController extends Controller
             $query->whereIn('type', ['order_created', 'order_received']);
         }
 
+        if ($filter === 'stock') {
+            $query->whereIn('type', ['stock_low', 'stock_out']);
+        }
+
         $notifications = $query->simplePaginate(12)->withQueryString();
-        $stats = Cache::remember('admin_notifications.stats', 15, fn () => (array) AdminNotification::query()
+        $stats = $this->stats();
+
+        return view('notifications', compact('notifications', 'stats', 'filter'));
+    }
+
+    public function changes(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'after_id' => ['nullable', 'integer', 'min:0'],
+        ]);
+        $afterId = (int) ($validated['after_id'] ?? 0);
+        $notifications = AdminNotification::query()
+            ->where('id', '>', $afterId)
+            ->oldest('id')
+            ->limit(20)
+            ->get();
+        $latestId = (int) ($notifications->last()?->id ?? $afterId);
+
+        return response()->json([
+            'latest_id' => $latestId,
+            'stats' => $this->stats(),
+            'notifications' => $notifications->map(fn (AdminNotification $notification) => [
+                'id' => $notification->id,
+                'title' => $notification->title,
+                'message' => $notification->message,
+                'category' => $notification->isOrderNotification() ? 'orders' : 'stock',
+                'severity' => in_array($notification->type, ['stock_low', 'stock_out'], true) ? 'error' : 'success',
+                'html' => view('partials.notification-item', compact('notification'))->render(),
+            ])->values(),
+        ])->header('Cache-Control', 'no-store');
+    }
+
+    private function stats(): array
+    {
+        $stats = (array) AdminNotification::query()
             ->toBase()
             ->selectRaw(
                 <<<'SQL'
                 COUNT(*) as total,
                 COUNT(CASE WHEN read_at IS NULL THEN 1 END) as unread,
-                COUNT(CASE WHEN type IN ('order_created', 'order_received') THEN 1 END) as orders
+                COUNT(CASE WHEN type IN ('order_created', 'order_received') THEN 1 END) as orders,
+                COUNT(CASE WHEN type IN ('stock_low', 'stock_out') THEN 1 END) as stock
                 SQL
             )
-            ->first());
-        $stats = [
+            ->first();
+
+        return [
             'total' => (int) $stats['total'],
             'unread' => (int) $stats['unread'],
             'orders' => (int) $stats['orders'],
+            'stock' => (int) $stats['stock'],
         ];
-        Cache::put('admin_notifications.unread_count', $stats['unread'], 15);
-
-        return view('notifications', compact('notifications', 'stats', 'filter'));
     }
 
     public function markAllRead()
     {
         AdminNotification::whereNull('read_at')->update(['read_at' => now()]);
-        Cache::forget('admin_notifications.unread_count');
-        Cache::forget('admin_notifications.stats');
 
         return back()->with('success', 'All notifications marked as read.');
     }
@@ -55,8 +91,6 @@ class NotificationController extends Controller
     {
         $destination = $notification->destinationUrl();
         $notification->update(['read_at' => now()]);
-        Cache::forget('admin_notifications.unread_count');
-        Cache::forget('admin_notifications.stats');
 
         return $destination
             ? redirect($destination)

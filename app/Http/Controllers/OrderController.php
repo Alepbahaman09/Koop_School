@@ -111,6 +111,10 @@ class OrderController extends Controller
 
         try {
             $history = DB::transaction(function () use ($order, $validated) {
+                if ($order->status === $validated['status']) {
+                    return null;
+                }
+
                 $order->update(['status' => $validated['status']]);
 
                 return OrderStatusHistory::create([
@@ -120,8 +124,11 @@ class OrderController extends Controller
                     'notes' => $validated['notes'] ?? null,
                 ]);
             });
+            $order->refresh();
 
-            $message = 'Order status updated to '.$validated['status'].'.';
+            $message = $history
+                ? 'Order status updated to '.$order->status.'.'
+                : 'Order is already '.$order->status.'.';
 
             if ($request->expectsJson()) {
                 return response()->json([
@@ -130,11 +137,11 @@ class OrderController extends Controller
                         'id' => $order->id,
                         'status' => $order->status,
                     ],
-                    'history' => [
+                    'history' => $history ? [
                         'status' => $history->status,
                         'updated_by' => auth()->user()->name,
                         'updated_at' => $history->created_at->diffForHumans(),
-                    ],
+                    ] : null,
                     'stats' => $this->orderStats(),
                 ]);
             }

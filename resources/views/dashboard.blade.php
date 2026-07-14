@@ -4,8 +4,6 @@
 @section('page-title', 'Dashboard')
 
 @section('content')
-@include('partials.admin-alerts')
-
 @php
     $maxSale = max($salesBars ?: [0]);
     $chartAmounts = [
