@@ -401,14 +401,8 @@
                 <button class="pay-tab active" data-method="Cash" onclick="selectPayMethod(this)">
                     💵<br>Cash
                 </button>
-                <button class="pay-tab" data-method="DuitNow" onclick="selectPayMethod(this)">
-                    📱<br>DuitNow QR
-                </button>
-                <button class="pay-tab" data-method="Card" onclick="selectPayMethod(this)">
-                    💳<br>Card
-                </button>
-                <button class="pay-tab" data-method="Wallet" disabled title="Coming soon">
-                    🎒<br><span class="opacity-60">Wallet</span>
+                <button class="pay-tab" data-method="NFC Card" onclick="selectPayMethod(this)">
+                    📶<br>NFC Card
                 </button>
             </div>
 
@@ -426,27 +420,12 @@
                 </div>
             </div>
 
-            {{-- DuitNow panel --}}
-            <div id="panel-DuitNow" style="display:none;">
+            {{-- NFC Card panel --}}
+            <div id="panel-NFC Card" style="display:none;">
                 <div class="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-center">
-                    <div class="text-sm font-bold text-blue-700 mb-3">Show QR to Student</div>
-                    <div class="qr-box mb-3">
-                        <svg class="w-10 h-10 text-blue-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                            <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-                            <rect x="3" y="14" width="7" height="7" rx="1"/>
-                            <path stroke-linecap="round" d="M14 14h2v2h-2zm4 0h3v3h-3zm0 4h3v3h-3zm-4 2h2v2h-2z"/>
-                        </svg>
-                    </div>
-                    <div class="text-xs text-blue-400 font-semibold">QR Code will appear here</div>
-                </div>
-            </div>
-
-            {{-- Card panel --}}
-            <div id="panel-Card" style="display:none;">
-                <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center">
-                    <div class="text-3xl mb-2">💳</div>
-                    <div class="text-sm font-bold text-slate-700">Tap Card to Continue</div>
-                    <div class="text-xs text-slate-400 mt-1">Ask student to tap their card on the reader</div>
+                    <div class="text-3xl mb-2">📶</div>
+                    <div class="text-sm font-bold text-blue-700">Tap NFC Card to Continue</div>
+                    <div class="text-xs text-blue-400 mt-1">Ask student to tap their NFC card on the reader</div>
                     <div class="mt-3 flex gap-1 justify-center">
                         <div class="w-2 h-2 rounded-full bg-blue-400 animate-bounce" style="animation-delay:0s"></div>
                         <div class="w-2 h-2 rounded-full bg-blue-400 animate-bounce" style="animation-delay:.15s"></div>
@@ -621,16 +600,16 @@ const CAT_EMOJI = {
 };
 
 const SAMPLE_HISTORY = [
-    { id:'POS-000042', date:'2026-07-13 09:14', total:12.50, method:'Cash',     status:'Paid',      cashier:'Ahmad Rozi' },
-    { id:'POS-000041', date:'2026-07-13 08:55', total:8.70,  method:'DuitNow',  status:'Paid',      cashier:'Ahmad Rozi' },
-    { id:'POS-000040', date:'2026-07-12 14:30', total:3.00,  method:'Card',     status:'Paid',      cashier:'Nurul Ain'  },
-    { id:'POS-000039', date:'2026-07-12 11:18', total:17.40, method:'Cash',     status:'Paid',      cashier:'Ahmad Rozi' },
-    { id:'POS-000038', date:'2026-07-12 10:02', total:5.50,  method:'Cash',     status:'Paid',      cashier:'Nurul Ain'  },
-    { id:'POS-000037', date:'2026-07-11 15:45', total:22.00, method:'DuitNow',  status:'Paid',      cashier:'Ahmad Rozi' },
-    { id:'POS-000036', date:'2026-07-11 13:22', total:9.10,  method:'Card',     status:'Paid',      cashier:'Ahmad Rozi' },
-    { id:'POS-000035', date:'2026-07-11 09:08', total:4.50,  method:'Cash',     status:'Paid',      cashier:'Nurul Ain'  },
-    { id:'POS-000034', date:'2026-07-10 16:55', total:14.20, method:'Cash',     status:'Paid',      cashier:'Ahmad Rozi' },
-    { id:'POS-000033', date:'2026-07-10 12:30', total:6.90,  method:'DuitNow',  status:'Paid',      cashier:'Ahmad Rozi' },
+    { id:'POS-000042', date:'2026-07-13 09:14', total:12.50, method:'Cash',      status:'Paid', cashier:'Ahmad Rozi' },
+    { id:'POS-000041', date:'2026-07-13 08:55', total:8.70,  method:'NFC Card',  status:'Paid', cashier:'Ahmad Rozi' },
+    { id:'POS-000040', date:'2026-07-12 14:30', total:3.00,  method:'NFC Card',  status:'Paid', cashier:'Nurul Ain'  },
+    { id:'POS-000039', date:'2026-07-12 11:18', total:17.40, method:'Cash',      status:'Paid', cashier:'Ahmad Rozi' },
+    { id:'POS-000038', date:'2026-07-12 10:02', total:5.50,  method:'Cash',      status:'Paid', cashier:'Nurul Ain'  },
+    { id:'POS-000037', date:'2026-07-11 15:45', total:22.00, method:'NFC Card',  status:'Paid', cashier:'Ahmad Rozi' },
+    { id:'POS-000036', date:'2026-07-11 13:22', total:9.10,  method:'NFC Card',  status:'Paid', cashier:'Ahmad Rozi' },
+    { id:'POS-000035', date:'2026-07-11 09:08', total:4.50,  method:'Cash',      status:'Paid', cashier:'Nurul Ain'  },
+    { id:'POS-000034', date:'2026-07-10 16:55', total:14.20, method:'Cash',      status:'Paid', cashier:'Ahmad Rozi' },
+    { id:'POS-000033', date:'2026-07-10 12:30', total:6.90,  method:'NFC Card',  status:'Paid', cashier:'Ahmad Rozi' },
 ];
 
 // ─────────────────────────────────────────────
@@ -860,7 +839,7 @@ function selectPayMethod(el) {
     el.classList.add('active');
     payMethod = el.dataset.method;
 
-    ['Cash','DuitNow','Card'].forEach(m => {
+    ['Cash','NFC Card'].forEach(m => {
         const p = document.getElementById(`panel-${m}`);
         if (p) p.style.display = m === payMethod ? 'block' : 'none';
     });
@@ -911,7 +890,7 @@ function doCheckout() {
     document.getElementById('r-total').textContent   = `RM${total.toFixed(2)}`;
     document.getElementById('r-txn-id').textContent  = txnId;
     document.getElementById('r-date').textContent    = dateStr;
-    document.getElementById('r-method').textContent  = payMethod === 'DuitNow' ? 'DuitNow QR' : payMethod;
+    document.getElementById('r-method').textContent  = payMethod;
     document.getElementById('r-cashier').textContent = '{{ auth()->user()->name ?? "Cashier" }}';
 
     const changeRow = document.getElementById('r-change-row');
@@ -942,7 +921,7 @@ function doCheckout() {
     // Add to sample history
     SAMPLE_HISTORY.unshift({
         id: txnId, date: dateStr, total,
-        method: payMethod === 'DuitNow' ? 'DuitNow QR' : payMethod,
+        method: payMethod,
         status: 'Paid', cashier: '{{ auth()->user()->name ?? "Cashier" }}'
     });
 
