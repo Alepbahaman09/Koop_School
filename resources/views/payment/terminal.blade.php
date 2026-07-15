@@ -267,6 +267,25 @@
         <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white font-bold text-sm shrink-0">
             {{ strtoupper(substr(auth()->user()->name ?? 'A', 0, 1)) }}
         </div>
+
+        {{-- Close / Exit button --}}
+        <a href="{{ route('orders.index') }}"
+           title="Exit Cashier Terminal"
+           style="display:flex; align-items:center; justify-content:center;
+                  width:36px; height:36px; border-radius:10px;
+                  background:#fee2e2; border:1.5px solid #fca5a5; color:#dc2626;
+                  transition:background .15s, border-color .15s, transform .1s;
+                  text-decoration:none; flex-shrink:0;"
+           onmouseover="this.style.background='#fecaca';this.style.borderColor='#f87171';"
+           onmouseout="this.style.background='#fee2e2';this.style.borderColor='#fca5a5';"
+           onmousedown="this.style.transform='scale(.93)';"
+           onmouseup="this.style.transform='scale(1)';">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2.8"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+        </a>
     </div>
 </header>
 
