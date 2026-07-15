@@ -44,14 +44,21 @@ class SupplierController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name'         => 'required|string|max:255',
+            'name'         => 'required|filled|string|max:255',
             'company_name' => 'nullable|string|max:255',
             'email'        => 'required|email|unique:suppliers,email',
-            'phone'        => 'required|string|max:50',
+            'phone'        => 'required|filled|string|max:50',
             'address'      => 'nullable|string|max:1000',
             'tax_number'   => 'nullable|string|max:100',
             'is_active'    => 'nullable|boolean',
         ]);
+
+        // Guard: ConvertEmptyStringsToNull middleware can nullify fields after
+        // validation; this ensures name never reaches the DB as null.
+        if (empty($validated['name'] ?? '')) {
+            return redirect()->back()->withInput()
+                ->withErrors(['name' => 'The contact name field is required.']);
+        }
 
         $validated['is_active'] = $request->boolean('is_active', true);
 
@@ -67,14 +74,19 @@ class SupplierController extends Controller
     public function update(Request $request, Supplier $supplier)
     {
         $validated = $request->validate([
-            'name'         => 'required|string|max:255',
+            'name'         => 'required|filled|string|max:255',
             'company_name' => 'nullable|string|max:255',
             'email'        => 'required|email|unique:suppliers,email,'.$supplier->id,
-            'phone'        => 'required|string|max:50',
+            'phone'        => 'required|filled|string|max:50',
             'address'      => 'nullable|string|max:1000',
             'tax_number'   => 'nullable|string|max:100',
             'is_active'    => 'nullable|boolean',
         ]);
+
+        if (empty($validated['name'] ?? '')) {
+            return redirect()->back()->withInput()
+                ->withErrors(['name' => 'The contact name field is required.']);
+        }
 
         $validated['is_active'] = $request->boolean('is_active');
 
