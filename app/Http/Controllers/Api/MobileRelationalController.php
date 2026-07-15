@@ -603,7 +603,7 @@ class MobileRelationalController extends Controller
     private function paymentMethod(array $data): string
     {
         return match ($data['paidWith'] ?? $data['paymentSource'] ?? '') {
-            'card', 'nfc_card' => 'NFC Card',
+            'card', 'nfc_card' => 'Card',
             'gateway', 'online' => 'Online Banking',
             default => 'E-Wallet',
         };

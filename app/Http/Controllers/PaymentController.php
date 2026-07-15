@@ -131,7 +131,7 @@ class PaymentController extends Controller
             $payment = Payment::create([
                 'order_id' => $order->id,
                 'payment_reference' => $paymentReference,
-                'payment_method' => 'NFC Card',
+                'payment_method' => 'Card',
                 'amount' => $order->total_amount,
                 'status' => 'Completed',
                 'paid_at' => now(),
