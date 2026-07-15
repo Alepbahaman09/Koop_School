@@ -553,17 +553,12 @@ class MobileRelationalController extends Controller
     private function deductPurchaseBalance(User $user, array $data, float $amount): void
     {
         $paidWith = $data['paidWith'] ?? $data['paymentSource'] ?? null;
-        if (in_array($paidWith, ['gateway', 'online'], true)) {
-            return;
-        }
-        if ($paidWith === 'wallet' || $paidWith === 'primary') {
-            abort_if((float) $user->wallet_balance < $amount, 422, 'Insufficient wallet balance.');
-            $user->decrement('wallet_balance', $amount);
 
+        if ($paidWith === 'cash') {
             return;
         }
 
-        abort_unless(in_array($paidWith, ['card', 'nfc_card'], true), 422, 'Unsupported payment method.');
+        abort_unless(in_array($paidWith, ['card', 'nfc_card'], true), 422, 'Unsupported payment method. Only Cash and NFC Card are accepted.');
 
         $cardUid = $data['cardId'] ?? $data['cardUid'] ?? null;
         abort_if(! $cardUid, 422, 'Card identifier is required.');
@@ -579,9 +574,8 @@ class MobileRelationalController extends Controller
     private function paymentMethod(array $data): string
     {
         return match ($data['paidWith'] ?? $data['paymentSource'] ?? '') {
-            'card', 'nfc_card' => 'Card',
-            'gateway', 'online' => 'Online Banking',
-            default => 'E-Wallet',
+            'card', 'nfc_card' => 'NFC Card',
+            default => 'Cash',
         };
     }
 
