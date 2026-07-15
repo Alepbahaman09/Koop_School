@@ -65,6 +65,9 @@ class FcmService
 
         $accessToken = $this->accessToken();
         $data = json_decode($notification->data ?: '{}', true) ?: [];
+        $receiptId = isset($data['receipt_id'])
+            ? (string) $data['receipt_id']
+            : null;
 
         foreach ($tokens as $token) {
             $response = Http::withToken($accessToken)
@@ -79,10 +82,11 @@ class FcmService
                             'body' => $notification->body,
                         ],
                         'data' => array_filter([
-                            'destination' => 'receipt',
+                            'destination' => $receiptId ? 'receipt' : 'notifications',
                             'notificationId' => (string) $notification->id,
-                            'receiptId' => isset($data['receipt_id'])
-                                ? (string) $data['receipt_id']
+                            'receiptId' => $receiptId,
+                            'productId' => isset($data['product_id'])
+                                ? (string) $data['product_id']
                                 : null,
                             'type' => (string) $notification->type,
                         ], fn ($value) => $value !== null),

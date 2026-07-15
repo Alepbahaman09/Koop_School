@@ -13,10 +13,12 @@ class OrderController extends Controller
     public function index(Request $request)
     {
         $query = Order::query()
-            ->select(['id', 'order_number', 'customer_id', 'status', 'total_amount', 'payment_status', 'created_at'])
+            ->select(['id', 'order_number', 'customer_id', 'user_id', 'student_id', 'status', 'total_amount', 'payment_status', 'created_at'])
             ->with([
                 'customer:id,parent_name,student_name,class,phone,email,address',
-                'orderItems:id,order_id,product_id,quantity,unit_price,subtotal',
+                'user:id,name,username,email,phone_number',
+                'student:id,name,class',
+                'orderItems:id,order_id,product_id,size,quantity,unit_price,subtotal',
                 'orderItems.product:id,name',
                 'statusHistory' => function ($q) {
                     $q->select(['id', 'order_id', 'user_id', 'admin_id', 'status', 'created_at'])
@@ -40,6 +42,14 @@ class OrderController extends Controller
                     ->orWhereHas('customer', function ($q2) use ($request) {
                         $q2->where('parent_name', 'like', '%'.$request->search.'%')
                             ->orWhere('student_name', 'like', '%'.$request->search.'%');
+                    })
+                    ->orWhereHas('user', function ($userQuery) use ($request) {
+                        $userQuery->where('name', 'like', '%'.$request->search.'%')
+                            ->orWhere('username', 'like', '%'.$request->search.'%');
+                    })
+                    ->orWhereHas('student', function ($studentQuery) use ($request) {
+                        $studentQuery->where('name', 'like', '%'.$request->search.'%')
+                            ->orWhere('class', 'like', '%'.$request->search.'%');
                     });
             });
         }

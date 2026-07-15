@@ -1,6 +1,9 @@
 <?php
 
-use Illuminate\Support\Facades\Password;
+use App\Models\Admin;
+use App\Services\SupabaseAuth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -13,32 +16,40 @@ new #[Layout('layouts.guest')] class extends Component
      */
     public function sendPasswordResetLink(): void
     {
+        $this->email = Str::lower(trim($this->email));
         $this->validate([
             'email' => ['required', 'string', 'email'],
         ]);
 
-        // We will send the password reset link to this user. Once we have attempted
-        // to send the link, we will examine the response then see the message we
-        // need to show to the user. Finally, we'll send out a proper response.
-        $status = Password::sendResetLink(
-            $this->only('email')
-        );
+        $adminExists = Admin::query()
+            ->whereRaw('LOWER(email) = ?', [$this->email])
+            ->exists();
 
-        if ($status != Password::RESET_LINK_SENT) {
-            $this->addError('email', __($status));
-
-            return;
+        if ($adminExists) {
+            try {
+                app(SupabaseAuth::class)->sendPasswordResetLink(
+                    $this->email,
+                    route('password.reset'),
+                );
+            } catch (Throwable $error) {
+                Log::error('Unable to send an admin password reset email through Supabase.', [
+                    'email_hash' => hash('sha256', $this->email),
+                    'exception' => $error,
+                ]);
+            }
         }
 
         $this->reset('email');
-
-        session()->flash('status', __($status));
+        session()->flash(
+            'status',
+            __('If an administrator account exists for that email, a password reset link has been sent.'),
+        );
     }
 }; ?>
 
 <div>
     <div class="mb-4 text-sm text-gray-600">
-        {{ __('Forgot your password? No problem. Just let us know your email address and we will email you a password reset link that will allow you to choose a new one.') }}
+        {{ __('Enter your administrator email and Supabase will send you a secure link to choose a new password.') }}
     </div>
 
     <!-- Session Status -->

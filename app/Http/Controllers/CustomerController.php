@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Customer;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
@@ -10,19 +10,25 @@ class CustomerController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Customer::query()
+        $query = User::query()
             ->select([
                 'id',
-                'parent_name',
+                'name',
+                'username',
                 'email',
-                'phone',
-                'is_active',
+                'phone_number',
+                'email_verified_at',
                 'created_at',
             ])
+            ->with(['students' => fn ($query) => $query
+                ->select(['id', 'user_id', 'name', 'class', 'is_active'])
+                ->where('is_active', true)
+                ->orderBy('name')])
             ->with(['orders' => fn ($query) => $query
-                ->select(['id', 'customer_id', 'order_number', 'status', 'payment_status', 'total_amount', 'created_at'])
+                ->select(['id', 'user_id', 'student_id', 'order_number', 'status', 'payment_status', 'total_amount', 'created_at'])
                 ->latest()
-                ->limit(8)])
+                ->limit(8)
+                ->with('student:id,name,class')])
             ->withCount('orders')
             ->withSum(['orders as total_spent' => function ($query) {
                 $query->where('payment_status', 'Paid');
@@ -30,41 +36,48 @@ class CustomerController extends Controller
 
         if ($request->search) {
             $query->where(function ($q) use ($request) {
-                $q->where('parent_name', 'like', '%'.$request->search.'%')
-                    ->orWhere('email', 'like', '%'.$request->search.'%');
+                $q->where('name', 'like', '%'.$request->search.'%')
+                    ->orWhere('username', 'like', '%'.$request->search.'%')
+                    ->orWhere('email', 'like', '%'.$request->search.'%')
+                    ->orWhereHas('students', function ($studentQuery) use ($request) {
+                        $studentQuery->where('name', 'like', '%'.$request->search.'%')
+                            ->orWhere('class', 'like', '%'.$request->search.'%');
+                    });
             });
         }
 
         if ($request->filled('status')) {
-            $query->where('is_active', $request->status === 'active');
+            $request->status === 'verified'
+                ? $query->whereNotNull('email_verified_at')
+                : $query->whereNull('email_verified_at');
         }
 
-        $customers = $query->latest()->paginate(20)->withQueryString();
-        $customerStats = Cache::remember('customers.stats', 30, fn () => (array) Customer::query()
+        $users = $query->latest()->paginate(20)->withQueryString();
+        $userStats = Cache::remember('users.stats', 30, fn () => (array) User::query()
             ->toBase()
             ->selectRaw(
                 <<<'SQL'
                 COUNT(*) as total,
-                COUNT(CASE WHEN is_active = true THEN 1 END) as active,
-                COUNT(CASE WHEN is_active = false THEN 1 END) as inactive,
+                COUNT(CASE WHEN email_verified_at IS NOT NULL THEN 1 END) as verified,
+                COUNT(CASE WHEN email_verified_at IS NULL THEN 1 END) as unverified,
                 COUNT(CASE WHEN EXISTS (
-                    SELECT 1 FROM orders WHERE orders.customer_id = customers.id
+                    SELECT 1 FROM orders WHERE orders.user_id = users.id
                 ) THEN 1 END) as with_orders
                 SQL
             )
             ->first());
 
         $stats = [
-            'total' => (int) $customerStats['total'],
-            'active' => (int) $customerStats['active'],
-            'inactive' => (int) $customerStats['inactive'],
-            'with_orders' => (int) $customerStats['with_orders'],
+            'total' => (int) $userStats['total'],
+            'verified' => (int) $userStats['verified'],
+            'unverified' => (int) $userStats['unverified'],
+            'with_orders' => (int) $userStats['with_orders'],
         ];
 
-        return view('users', compact('customers', 'stats'));
+        return view('users', compact('users', 'stats'));
     }
 
-    public function show(Customer $customer)
+    public function show(User $customer)
     {
         return redirect()->route('users.index', ['customer' => $customer->id]);
     }
