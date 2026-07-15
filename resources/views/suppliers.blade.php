@@ -56,7 +56,7 @@
     <h2 class="mb-3 text-sm font-extrabold text-slate-900">Filter Suppliers</h2>
     <form method="GET" class="flex flex-wrap items-center gap-2">
         <input name="search" value="{{ request('search') }}"
-            placeholder="Search by name, company, or email"
+            placeholder="Search by company name"
             class="h-9 w-64 flex-none rounded-lg border-slate-200 bg-white text-xs font-semibold focus:border-indigo-400 focus:ring-indigo-200">
         <select name="status" class="h-9 w-40 flex-none rounded-lg border-slate-200 bg-white text-xs font-bold text-slate-600 focus:border-indigo-400">
             <option value="">All statuses</option>
@@ -79,10 +79,10 @@
         <table class="w-full text-left text-sm">
             <thead>
                 <tr class="border-b border-slate-100 text-xs font-bold uppercase text-slate-400">
-                    <th class="px-5 py-4">Supplier</th>
-                    <th class="px-5 py-4">Company</th>
-                    <th class="px-5 py-4">Contact</th>
-                    <th class="px-5 py-4">Tax No.</th>
+                    <th class="px-5 py-4">Company Name</th>
+                    <th class="px-5 py-4">Contact Person</th>
+                    <th class="px-5 py-4">Contact Details</th>
+                    <th class="px-5 py-4">Notes</th>
                     <th class="px-5 py-4">Status</th>
                     <th class="px-5 py-4 text-right">Actions</th>
                 </tr>
@@ -90,34 +90,34 @@
             <tbody class="divide-y divide-slate-50">
                 @forelse ($suppliers as $supplier)
                     <tr class="group hover:bg-slate-50/60 transition">
-                        {{-- Supplier name --}}
+                        {{-- Company name --}}
                         <td class="px-5 py-4">
                             <div class="flex items-center gap-3">
                                 <div class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-indigo-100 text-sm font-extrabold text-indigo-600">
-                                    {{ strtoupper(substr($supplier->name, 0, 1)) }}
+                                    {{ strtoupper(substr($supplier->company_name, 0, 1)) }}
                                 </div>
                                 <div>
-                                    <p class="font-extrabold text-slate-900">{{ $supplier->name }}</p>
+                                    <p class="font-extrabold text-slate-900">{{ $supplier->company_name }}</p>
                                     <p class="text-[11px] font-semibold text-slate-400">Added {{ $supplier->created_at->diffForHumans() }}</p>
                                 </div>
                             </div>
                         </td>
-                        {{-- Company --}}
+                        {{-- Contact Person --}}
                         <td class="px-5 py-4">
-                            <p class="font-semibold text-slate-700">{{ $supplier->company_name ?: '—' }}</p>
+                            <p class="font-semibold text-slate-700">{{ $supplier->contact_person ?: '—' }}</p>
                         </td>
-                        {{-- Contact --}}
+                        {{-- Contact Details --}}
                         <td class="px-5 py-4">
-                            <p class="font-semibold text-slate-700">{{ $supplier->email }}</p>
-                            <p class="text-[11px] font-semibold text-slate-400">{{ $supplier->phone }}</p>
+                            <p class="font-semibold text-slate-700">{{ $supplier->email ?: '—' }}</p>
+                            <p class="text-[11px] font-semibold text-slate-400">{{ $supplier->phone ?: '—' }}</p>
                         </td>
-                        {{-- Tax --}}
+                        {{-- Notes --}}
                         <td class="px-5 py-4">
-                            <p class="font-semibold text-slate-700">{{ $supplier->tax_number ?: '—' }}</p>
+                            <p class="text-xs font-semibold text-slate-500 truncate max-w-xs" title="{{ $supplier->notes }}">{{ $supplier->notes ?: '—' }}</p>
                         </td>
                         {{-- Status --}}
                         <td class="px-5 py-4">
-                            @if ($supplier->is_active)
+                            @if ($supplier->status === 'active')
                                 <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-600 ring-1 ring-emerald-100">
                                     <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span> Active
                                 </span>
@@ -140,7 +140,7 @@
                                     <div class="fixed inset-0 z-40 bg-slate-950/30" onclick="this.closest('details').open=false"></div>
                                     <div class="fixed inset-x-4 top-6 z-50 mx-auto max-h-[90vh] max-w-2xl overflow-y-auto rounded-xl bg-white p-6 shadow-2xl">
                                         <div class="mb-5 flex items-center justify-between">
-                                            <h2 class="text-lg font-extrabold">Edit {{ $supplier->name }}</h2>
+                                            <h2 class="text-lg font-extrabold">Edit {{ $supplier->company_name }}</h2>
                                             <button type="button" onclick="this.closest('details').open=false"
                                                 class="grid h-8 w-8 place-items-center rounded-lg bg-slate-100 font-extrabold text-slate-500 hover:bg-slate-200">&times;</button>
                                         </div>
@@ -156,18 +156,20 @@
                                         </form>
                                     </div>
                                 </details>
-                                {{-- Delete --}}
-                                <form method="POST" action="{{ route('suppliers.destroy', $supplier) }}"
-                                    onsubmit="return confirm('Remove {{ addslashes($supplier->name) }} from suppliers?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit"
-                                        class="grid h-8 w-8 place-items-center rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-100 transition" title="Delete">
-                                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M4 7h16m-10 4v6m4-6v6M9 7l1-3h4l1 3m3 0-1 14H7L6 7" />
-                                        </svg>
-                                    </button>
-                                </form>
+                                {{-- Inactivate instead of Delete --}}
+                                @if($supplier->status === 'active')
+                                    <form method="POST" action="{{ route('suppliers.destroy', $supplier) }}"
+                                        onsubmit="return confirm('Change {{ addslashes($supplier->company_name) }} status to inactive?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit"
+                                            class="grid h-8 w-8 place-items-center rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-100 transition" title="Deactivate">
+                                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M18.36 6.64a9 9 0 1 1-12.73 0M12 2v10" />
+                                            </svg>
+                                        </button>
+                                    </form>
+                                @endif
                             </div>
                         </td>
                     </tr>
@@ -189,14 +191,3 @@
 </section>
 
 @endsection
-
-@if (old('_supplier_create') || $errors->any())
-    @push('scripts')
-        <script>
-            document.addEventListener('DOMContentLoaded', () => {
-                const createDetails = document.querySelector('details[data-create]');
-                if (createDetails) createDetails.open = true;
-            });
-        </script>
-    @endpush
-@endif

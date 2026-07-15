@@ -12,6 +12,8 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\StockPurchaseController;
+use App\Http\Controllers\ManageStockController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login');
@@ -49,6 +51,13 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('finance/export', [FinanceController::class, 'export'])->name('finance.export');
 
     Route::resource('suppliers', SupplierController::class)->except(['create', 'edit', 'show']);
+    Route::post('stock-purchases/product-inline', [StockPurchaseController::class, 'storeProductInline'])->name('stock-purchases.product-inline');
+    Route::post('stock-purchases/{stock_purchase}/receive', [StockPurchaseController::class, 'markAsReceived'])->name('stock-purchases.receive');
+    Route::resource('stock-purchases', StockPurchaseController::class)->only(['index', 'create', 'store', 'show']);
+
+    // Manage Stock (manual adjustments)
+    Route::get('manage-stock', [ManageStockController::class, 'index'])->name('manage-stock.index');
+    Route::post('manage-stock', [ManageStockController::class, 'store'])->name('manage-stock.store');
 
     // ── Cashier Terminal (dedicated — separate from app PaymentController) ──
     Route::post('cashier/sale',        [CashierController::class, 'sale'])->name('cashier.sale');

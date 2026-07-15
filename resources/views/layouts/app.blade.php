@@ -10,9 +10,14 @@
         ['label' => 'Cashier Terminal', 'route' => 'payment.index', 'icon' => 'M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3H3V5Zm0 4h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Zm4 4h6M7 16h3'],
         ['label' => 'Orders', 'route' => 'orders.index', 'icon' => 'M6 6h15l-1.5 9h-12L6 6Zm0 0L5 3H2m7 18a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm9 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z'],
         ['label' => 'Products', 'route' => 'products.index', 'icon' => 'M20 7 12 3 4 7l8 4 8-4Zm0 0v10l-8 4m8-14-8 4m0 10-8-4V7m8 14V11'],
-        ['label' => 'Suppliers', 'route' => 'suppliers.index', 'icon' => 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3Zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3Zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5Zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5Z'],
         ['label' => 'Home Banners', 'route' => 'home-banners.index', 'icon' => 'M4 6h16v12H4zM7 9h5M7 13h10'],
         ['label' => 'Users', 'route' => 'users.index', 'icon' => 'M17 20h5v-2a4 4 0 0 0-4-4h-1M9 20H4v-2a4 4 0 0 1 4-4h1m8-4a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM9 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z'],
+    ];
+
+    $inventoryItems = [
+        ['label' => 'Suppliers', 'route' => 'suppliers.index', 'icon' => 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3Zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3Zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5Zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5Z'],
+        ['label' => 'Stock Purchases', 'route' => 'stock-purchases.index', 'icon' => 'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2'],
+        ['label' => 'Manage Stock', 'route' => 'manage-stock.index', 'icon' => 'M3 10h11M3 14h7m-7-8h16M3 18h16M17 6v12m-2-2 2 2 2-2'],
     ];
 
     $toolItems = [
@@ -53,6 +58,25 @@
                         <p class="mb-3 px-3 text-xs font-bold uppercase text-slate-400">Menu</p>
                         <div class="space-y-1">
                             @foreach ($navItems as $item)
+                                <a href="{{ isset($item['route']) ? route($item['route']) : '#' }}" class="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-semibold {{ isset($item['route']) && request()->routeIs($item['route']) ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900' }}">
+                                    <span class="flex items-center gap-3">
+                                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="{{ $item['icon'] }}" />
+                                        </svg>
+                                        {{ $item['label'] }}
+                                    </span>
+                                    @isset($item['badge'])
+                                        <span class="grid h-5 min-w-5 place-items-center rounded-full bg-indigo-600 px-1.5 text-xs text-white">{{ $item['badge'] }}</span>
+                                    @endisset
+                                </a>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <div>
+                        <p class="mb-3 px-3 text-xs font-bold uppercase text-slate-400">Inventory</p>
+                        <div class="space-y-1">
+                            @foreach ($inventoryItems as $item)
                                 <a href="{{ isset($item['route']) ? route($item['route']) : '#' }}" class="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-semibold {{ isset($item['route']) && request()->routeIs($item['route']) ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900' }}">
                                     <span class="flex items-center gap-3">
                                         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">

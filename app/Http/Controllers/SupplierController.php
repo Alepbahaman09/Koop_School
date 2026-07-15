@@ -15,24 +15,19 @@ class SupplierController extends Controller
         $query = Supplier::query();
 
         if ($search = $request->input('search')) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('company_name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%");
-            });
+            $query->where('company_name', 'like', "%{$search}%");
         }
 
         if ($request->filled('status')) {
-            $query->where('is_active', $request->input('status') === 'active');
+            $query->where('status', $request->input('status'));
         }
 
         $suppliers = $query->latest()->paginate(15)->withQueryString();
 
         $stats = [
             'total'    => Supplier::count(),
-            'active'   => Supplier::where('is_active', true)->count(),
-            'inactive' => Supplier::where('is_active', false)->count(),
+            'active'   => Supplier::where('status', 'active')->count(),
+            'inactive' => Supplier::where('status', 'inactive')->count(),
         ];
 
         return view('suppliers', compact('suppliers', 'stats'));
@@ -44,27 +39,16 @@ class SupplierController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'supplier_name' => 'required|filled|string|max:255',
-            'company_name'  => 'nullable|string|max:255',
-            'email'         => 'required|email|unique:suppliers,email',
-            'phone'         => 'required|filled|string|max:50',
-            'address'       => 'nullable|string|max:1000',
-            'tax_number'    => 'nullable|string|max:100',
-            'is_active'     => 'nullable|boolean',
+            'company_name'   => 'required|string|max:255',
+            'contact_person' => 'nullable|string|max:255',
+            'email'          => 'nullable|email|max:255',
+            'phone'          => 'nullable|string|max:50',
+            'address'        => 'nullable|string|max:1000',
+            'notes'          => 'nullable|string|max:1000',
+            'status'         => 'required|in:active,inactive',
         ]);
 
-        // Use explicit attribute assignment to guarantee 'name' reaches the DB.
-        // Avoid mass-assignment via create($validated) because the 'supplier_name'
-        // input key must be remapped to the 'name' DB column.
-        $supplier = new Supplier();
-        $supplier->name         = $validated['supplier_name'];
-        $supplier->company_name = $validated['company_name'] ?? null;
-        $supplier->email        = $validated['email'];
-        $supplier->phone        = $validated['phone'];
-        $supplier->address      = $validated['address'] ?? null;
-        $supplier->tax_number   = $validated['tax_number'] ?? null;
-        $supplier->is_active    = $request->boolean('is_active', true);
-        $supplier->save();
+        Supplier::create($validated);
 
         return redirect()->route('suppliers.index')
             ->with('success', 'Supplier created successfully.');
@@ -76,36 +60,29 @@ class SupplierController extends Controller
     public function update(Request $request, Supplier $supplier)
     {
         $validated = $request->validate([
-            'supplier_name' => 'required|filled|string|max:255',
-            'company_name'  => 'nullable|string|max:255',
-            'email'         => 'required|email|unique:suppliers,email,'.$supplier->id,
-            'phone'         => 'required|filled|string|max:50',
-            'address'       => 'nullable|string|max:1000',
-            'tax_number'    => 'nullable|string|max:100',
-            'is_active'     => 'nullable|boolean',
+            'company_name'   => 'required|string|max:255',
+            'contact_person' => 'nullable|string|max:255',
+            'email'          => 'nullable|email|max:255',
+            'phone'          => 'nullable|string|max:50',
+            'address'        => 'nullable|string|max:1000',
+            'notes'          => 'nullable|string|max:1000',
+            'status'         => 'required|in:active,inactive',
         ]);
 
-        $supplier->name         = $validated['supplier_name'];
-        $supplier->company_name = $validated['company_name'] ?? null;
-        $supplier->email        = $validated['email'];
-        $supplier->phone        = $validated['phone'];
-        $supplier->address      = $validated['address'] ?? null;
-        $supplier->tax_number   = $validated['tax_number'] ?? null;
-        $supplier->is_active    = $request->boolean('is_active');
-        $supplier->save();
+        $supplier->update($validated);
 
         return redirect()->route('suppliers.index')
             ->with('success', 'Supplier updated successfully.');
     }
 
     /**
-     * Remove the specified supplier.
+     * Remove the specified supplier (toggles status to inactive, do not delete).
      */
     public function destroy(Supplier $supplier)
     {
-        $supplier->delete();
+        $supplier->update(['status' => 'inactive']);
 
         return redirect()->route('suppliers.index')
-            ->with('success', 'Supplier removed.');
+            ->with('success', 'Supplier status changed to inactive.');
     }
 }
