@@ -12,6 +12,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class CashierController extends Controller
 {
@@ -99,11 +102,37 @@ class CashierController extends Controller
                 }
             }
 
+            // Find or create default walk-in user & customer for database integrity
+            $user = \App\Models\User::where('email', 'pos@koop.school')->first();
+            if (!$user) {
+                $user = \App\Models\User::create([
+                    'name' => 'POS Walk-in',
+                    'email' => 'pos@koop.school',
+                    'password' => Hash::make(Str::random(16)),
+                    'wallet_balance' => 0,
+                    'email_verified_at' => now(),
+                ]);
+            }
+
+            $customer = \App\Models\Customer::where('student_id', 'POS-WALKIN')->first();
+            if (!$customer) {
+                $customer = \App\Models\Customer::create([
+                    'student_id' => 'POS-WALKIN',
+                    'student_name' => 'Walk-in Customer',
+                    'parent_name' => 'Walk-in Parent',
+                    'email' => 'pos@koop.school',
+                    'phone' => '-',
+                    'class' => '-',
+                    'address' => '-',
+                ]);
+            }
+
             // 1. Create order
             $orderNumber = $this->generateOrderNumber();
             $order = Order::create([
                 'order_number'   => $orderNumber,
-                'customer_id'    => null,   // walk-in POS sale
+                'customer_id'    => $customer->id,
+                'user_id'        => $user->id,
                 'status'         => Order::STATUS_COMPLETED,
                 'payment_status' => 'Paid',
                 'subtotal'       => $total,
@@ -188,6 +217,10 @@ class CashierController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('POS Sale Failed: ' . $e->getMessage(), [
+                'exception' => $e,
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Sale failed: ' . $e->getMessage(),
