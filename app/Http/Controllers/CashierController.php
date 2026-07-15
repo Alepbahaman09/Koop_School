@@ -6,7 +6,7 @@ use App\Models\Card;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderStatusHistory;
-use App\Models\Payment;
+use App\Models\TerminalPayment;
 use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -138,7 +138,7 @@ class CashierController extends Controller
                 ? 'Cash payment. Received: RM ' . number_format($cashReceived, 2) . ', Change: RM ' . number_format($cashReceived - $total, 2)
                 : 'NFC Card payment. Card: ' . $cardUid . ' (' . $card->owner . ')';
 
-            Payment::create([
+            TerminalPayment::create([
                 'order_id'          => $order->id,
                 'payment_reference' => $paymentReference,
                 'payment_method'    => $paymentMethod,
@@ -227,7 +227,7 @@ class CashierController extends Controller
     public function history(): JsonResponse
     {
         $orders = Order::where('notes', 'like', '%POS cashier%')
-            ->with(['payments' => fn ($q) => $q->where('status', 'Completed')->latest()->limit(1)])
+            ->with(['terminalPayments' => fn ($q) => $q->where('status', 'Completed')->latest()->limit(1)])
             ->latest()
             ->limit(50)
             ->get()
@@ -235,7 +235,7 @@ class CashierController extends Controller
                 'id'     => $o->order_number,
                 'date'   => $o->created_at->timezone(config('app.timezone'))->format('Y-m-d H:i'),
                 'total'  => (float) $o->total_amount,
-                'method' => $o->payments->first()?->payment_method ?? '—',
+                'method' => $o->terminalPayments->first()?->payment_method ?? '—',
                 'status' => $o->payment_status === 'Paid' ? 'Paid' : 'Pending',
             ]);
 
