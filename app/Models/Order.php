@@ -26,7 +26,7 @@ class Order extends Model
         self::STATUS_CANCELLED,
     ];
 
-    protected $fillable = ['order_number', 'mobile_reference', 'customer_id', 'user_id', 'status', 'subtotal', 'tax', 'discount', 'total_amount', 'payment_status', 'notes'];
+    protected $fillable = ['order_number', 'mobile_reference', 'customer_id', 'user_id', 'student_id', 'status', 'subtotal', 'tax', 'discount', 'total_amount', 'payment_status', 'notes'];
 
     public function customer()
     {
@@ -36,6 +36,11 @@ class Order extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function student()
+    {
+        return $this->belongsTo(Student::class);
     }
 
     public function orderItems()

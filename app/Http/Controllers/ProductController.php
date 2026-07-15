@@ -5,10 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\InventoryTransaction;
 use App\Models\Product;
+use App\Models\ProductSize;
 use App\Services\SupabaseStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
 {
@@ -19,8 +22,8 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         $query = Product::query()
-            ->select(['id', 'category_id', 'sku', 'name', 'price', 'stock_quantity', 'min_stock_level', 'image', 'created_at'])
-            ->with('category:id,name');
+            ->select(['id', 'category_id', 'sku', 'name', 'description', 'price', 'stock_quantity', 'min_stock_level', 'image', 'created_at'])
+            ->with(['category:id,name', 'sizes:id,product_id,size,stock_quantity']);
 
         if ($request->filled('search')) {
             $search = (string) $request->string('search')->trim();
@@ -75,7 +78,9 @@ class ProductController extends Controller
             'inventory_value' => (float) $productStats['inventory_value'],
         ];
 
-        return view('products', compact('products', 'categories', 'allCategories', 'categoryStats', 'stats'));
+        $availableSizes = ProductSize::AVAILABLE_SIZES;
+
+        return view('products', compact('products', 'categories', 'allCategories', 'categoryStats', 'stats', 'availableSizes'));
     }
 
     public function create()
@@ -85,16 +90,9 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'category_id' => 'required|exists:categories,id',
-            'sku' => 'required|unique:products,sku',
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'price' => 'required|numeric|min:0',
-            'stock_quantity' => 'required|integer|min:0',
-            'min_stock_level' => 'required|integer|min:0',
-            'image' => 'nullable|image|max:2048',
-        ]);
+        $validated = $this->validateProduct($request);
+        $sizeStocks = $validated['size_stocks'];
+        unset($validated['size_stocks']);
 
         if ($request->hasFile('image')) {
             $validated['image'] = $this->storage->uploadImage(
@@ -104,8 +102,9 @@ class ProductController extends Controller
             );
         }
 
-        DB::transaction(function () use ($validated) {
+        DB::transaction(function () use ($validated, $sizeStocks) {
             $product = Product::create($validated);
+            $this->syncSizeStocks($product, $sizeStocks);
 
             if ($product->stock_quantity > 0) {
                 InventoryTransaction::create([
@@ -130,16 +129,9 @@ class ProductController extends Controller
 
     public function update(Request $request, Product $product)
     {
-        $validated = $request->validate([
-            'category_id' => 'required|exists:categories,id',
-            'sku' => 'required|unique:products,sku,'.$product->id,
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'price' => 'required|numeric|min:0',
-            'stock_quantity' => 'required|integer|min:0',
-            'min_stock_level' => 'required|integer|min:0',
-            'image' => 'nullable|image|max:2048',
-        ]);
+        $validated = $this->validateProduct($request, $product);
+        $sizeStocks = $validated['size_stocks'];
+        unset($validated['size_stocks']);
 
         $oldImage = $product->image;
         $oldStock = $product->stock_quantity;
@@ -152,8 +144,9 @@ class ProductController extends Controller
             );
         }
 
-        DB::transaction(function () use ($product, $validated, $oldStock) {
+        DB::transaction(function () use ($product, $validated, $oldStock, $sizeStocks) {
             $product->update($validated);
+            $this->syncSizeStocks($product, $sizeStocks);
 
             if ($oldStock !== $product->stock_quantity) {
                 InventoryTransaction::create([
@@ -197,6 +190,76 @@ class ProductController extends Controller
         // Remove images created by the previous local-storage implementation.
         if (! str_starts_with($image, 'http://') && ! str_starts_with($image, 'https://')) {
             Storage::disk('public')->delete($image);
+        }
+    }
+
+    private function validateProduct(Request $request, ?Product $product = null): array
+    {
+        $validated = $request->validate([
+            'category_id' => ['required', 'exists:categories,id'],
+            'sku' => ['required', 'string', 'max:255', Rule::unique('products', 'sku')->ignore($product)],
+            'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'price' => ['required', 'numeric', 'min:0'],
+            'stock_quantity' => ['nullable', 'required_unless:has_sizes,1', 'integer', 'min:0'],
+            'min_stock_level' => ['required', 'integer', 'min:0'],
+            'has_sizes' => ['nullable', 'boolean'],
+            'sizes' => ['nullable', 'array'],
+            'sizes.*' => ['string', 'in:'.implode(',', ProductSize::AVAILABLE_SIZES)],
+            'size_stock' => ['nullable', 'array'],
+            'size_stock.*' => ['nullable', 'integer', 'min:0'],
+            'image' => ['nullable', 'image', 'max:2048'],
+        ]);
+
+        $sizeStocks = [];
+
+        if ($request->boolean('has_sizes')) {
+            $selectedSizes = array_values(array_unique($validated['sizes'] ?? []));
+
+            if ($selectedSizes === []) {
+                throw ValidationException::withMessages([
+                    'sizes' => 'Select at least one available size.',
+                ]);
+            }
+
+            foreach ($selectedSizes as $size) {
+                $stock = $validated['size_stock'][$size] ?? null;
+
+                if ($stock === null || $stock === '') {
+                    throw ValidationException::withMessages([
+                        "size_stock.$size" => "Enter the stock quantity for size $size.",
+                    ]);
+                }
+
+                $sizeStocks[$size] = (int) $stock;
+            }
+
+            $validated['stock_quantity'] = array_sum($sizeStocks);
+        } else {
+            $validated['stock_quantity'] = (int) $validated['stock_quantity'];
+        }
+
+        unset($validated['has_sizes'], $validated['sizes'], $validated['size_stock']);
+        $validated['size_stocks'] = $sizeStocks;
+
+        return $validated;
+    }
+
+    private function syncSizeStocks(Product $product, array $sizeStocks): void
+    {
+        if ($sizeStocks === []) {
+            $product->sizes()->delete();
+
+            return;
+        }
+
+        $product->sizes()->whereNotIn('size', array_keys($sizeStocks))->delete();
+
+        foreach ($sizeStocks as $size => $stockQuantity) {
+            $product->sizes()->updateOrCreate(
+                ['size' => $size],
+                ['stock_quantity' => $stockQuantity],
+            );
         }
     }
 }

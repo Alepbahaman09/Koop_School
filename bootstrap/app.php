@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\ApiTokenMiddleware;
+use App\Http\Middleware\DispatchPendingFcmNotifications;
 use App\Http\Middleware\EnsureAdmin;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -16,6 +17,11 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
+        $middleware->appendToGroup('web', [
+            DispatchPendingFcmNotifications::class,
+        ]);
+
+
         $middleware->alias([
             'api.token' => ApiTokenMiddleware::class,
             'admin' => EnsureAdmin::class,

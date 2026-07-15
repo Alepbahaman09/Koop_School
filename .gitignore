@@ -16,6 +16,7 @@
 /node_modules
 /public/storage
 /storage/*.key
+/storage/app/firebase-service-account.json
 /storage/pail
 /vendor
 _ide_helper.php

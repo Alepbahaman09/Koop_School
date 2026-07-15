@@ -1,105 +1,112 @@
 <?php
 
-use Illuminate\Auth\Events\PasswordReset;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Password;
-use Illuminate\Support\Facades\Session;
+use App\Models\Admin;
+use App\Services\SupabaseAuth;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 use Livewire\Attributes\Layout;
-use Livewire\Attributes\Locked;
 use Livewire\Volt\Component;
 
 new #[Layout('layouts.guest')] class extends Component
 {
-    #[Locked]
-    public string $token = '';
-    public string $email = '';
+    public string $accessToken = '';
+    public string $linkError = '';
     public string $password = '';
     public string $password_confirmation = '';
 
-    /**
-     * Mount the component.
-     */
-    public function mount(string $token): void
-    {
-        $this->token = $token;
-
-        $this->email = request()->string('email');
-    }
-
-    /**
-     * Reset the password for the given user.
-     */
     public function resetPassword(): void
     {
         $this->validate([
-            'token' => ['required'],
-            'email' => ['required', 'string', 'email'],
+            'accessToken' => ['required', 'string'],
             'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
+        ], [
+            'accessToken.required' => __('This password reset link is invalid or has expired.'),
         ]);
 
-        // Here we will attempt to reset the user's password. If it is successful we
-        // will update the password on an actual user model and persist it to the
-        // database. Otherwise we will parse the error and return the response.
-        $status = Password::reset(
-            $this->only('email', 'password', 'password_confirmation', 'token'),
-            function ($user) {
-                $user->forceFill([
-                    'password' => Hash::make($this->password),
-                    'remember_token' => Str::random(60),
-                ])->save();
+        try {
+            $supabase = app(SupabaseAuth::class);
+            $identity = $supabase->recoveryUser($this->accessToken);
+            $authUserId = (string) ($identity['id'] ?? '');
+            $email = Str::lower(trim((string) ($identity['email'] ?? '')));
 
-                event(new PasswordReset($user));
+            $admin = Admin::query()
+                ->where('auth_user_id', $authUserId)
+                ->orWhereRaw('LOWER(email) = ?', [$email])
+                ->first();
+
+            if (! $admin || $authUserId === '' || $email === '') {
+                throw new RuntimeException('This reset link does not belong to an administrator account.');
             }
-        );
 
-        // If the password was successfully reset, we will redirect the user back to
-        // the application's home authenticated view. If there is an error we can
-        // redirect them back to where they came from with their error message.
-        if ($status != Password::PASSWORD_RESET) {
-            $this->addError('email', __($status));
+            $supabase->updatePassword($this->accessToken, $this->password);
+
+            $admin->forceFill([
+                'auth_user_id' => $authUserId,
+                'password' => $this->password,
+                'remember_token' => Str::random(60),
+            ])->save();
+        } catch (Throwable $error) {
+            report($error);
+            $this->addError('accessToken', __($error->getMessage()));
 
             return;
         }
 
-        Session::flash('status', __($status));
-
+        session()->flash('status', __('Your password has been reset. You can now log in.'));
         $this->redirectRoute('login', navigate: true);
     }
 }; ?>
 
 <div>
-    <form wire:submit="resetPassword">
-        <!-- Email Address -->
-        <div>
-            <x-input-label for="email" :value="__('Email')" />
-            <x-text-input wire:model="email" id="email" class="block mt-1 w-full" type="email" name="email" required autofocus autocomplete="username" />
-            <x-input-error :messages="$errors->get('email')" class="mt-2" />
-        </div>
+    <div class="mb-4 text-sm text-gray-600">
+        {{ __('Choose a new password for your administrator account.') }}
+    </div>
 
-        <!-- Password -->
-        <div class="mt-4">
-            <x-input-label for="password" :value="__('Password')" />
-            <x-text-input wire:model="password" id="password" class="block mt-1 w-full" type="password" name="password" required autocomplete="new-password" />
+    @if ($linkError)
+        <div class="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">
+            {{ $linkError }}
+        </div>
+    @endif
+
+    <form wire:submit="resetPassword">
+        <x-input-error :messages="$errors->get('accessToken')" class="mb-4" />
+
+        <div>
+            <x-input-label for="password" :value="__('New password')" />
+            <x-text-input wire:model="password" id="password" class="mt-1 block w-full"
+                          type="password" required autocomplete="new-password" />
             <x-input-error :messages="$errors->get('password')" class="mt-2" />
         </div>
 
-        <!-- Confirm Password -->
         <div class="mt-4">
-            <x-input-label for="password_confirmation" :value="__('Confirm Password')" />
-
-            <x-text-input wire:model="password_confirmation" id="password_confirmation" class="block mt-1 w-full"
-                          type="password"
-                          name="password_confirmation" required autocomplete="new-password" />
-
+            <x-input-label for="password_confirmation" :value="__('Confirm new password')" />
+            <x-text-input wire:model="password_confirmation" id="password_confirmation" class="mt-1 block w-full"
+                          type="password" required autocomplete="new-password" />
             <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
         </div>
 
-        <div class="flex items-center justify-end mt-4">
-            <x-primary-button>
-                {{ __('Reset Password') }}
+        <div class="mt-4 flex items-center justify-end">
+            <x-primary-button wire:loading.attr="disabled">
+                {{ __('Reset password') }}
             </x-primary-button>
         </div>
     </form>
+
+    @script
+    <script>
+        const values = new URLSearchParams(window.location.hash.slice(1));
+        const accessToken = values.get('access_token');
+        const errorMessage = values.get('error_description');
+
+        if (accessToken) {
+            $wire.set('accessToken', accessToken);
+            window.history.replaceState({}, document.title, window.location.pathname);
+        } else {
+            $wire.set(
+                'linkError',
+                errorMessage || 'This password reset link is invalid or has expired.',
+            );
+        }
+    </script>
+    @endscript
 </div>

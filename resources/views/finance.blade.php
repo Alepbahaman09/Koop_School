@@ -4,8 +4,6 @@
 @section('page-title', 'Finance')
 
 @section('content')
-@include('partials.admin-alerts')
-
 @php
     $metricStyles = [
         'indigo' => 'bg-indigo-600 text-white shadow-indigo-100',

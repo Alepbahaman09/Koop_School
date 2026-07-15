@@ -4,8 +4,6 @@
 @section('page-title', 'Products')
 
 @section('content')
-@include('partials.admin-alerts')
-
 <section class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <div>
         <h1 class="text-xl font-extrabold text-slate-950">Products</h1>
@@ -15,7 +13,7 @@
         <button type="button" onclick="document.getElementById('category-manager').showModal()" class="inline-flex h-10 items-center gap-2 rounded-lg bg-white px-4 text-sm font-extrabold text-indigo-600 ring-1 ring-indigo-200 hover:bg-indigo-50">
             <span class="text-lg leading-none">+</span> Categories
         </button>
-        <details class="group" {{ request('create') ? 'open' : '' }}>
+        <details class="group" {{ request('create') || old('_product_form') === 'create' ? 'open' : '' }}>
             <summary class="inline-flex h-10 cursor-pointer list-none items-center gap-2 rounded-lg bg-indigo-600 px-4 text-sm font-extrabold text-white shadow-sm hover:bg-indigo-700"><span class="text-lg">+</span> Add Product</summary>
             <div class="fixed inset-0 z-40 bg-slate-950/30"></div>
             <div class="fixed inset-x-4 top-6 z-50 mx-auto max-h-[90vh] max-w-3xl overflow-y-auto rounded-xl bg-white p-6 shadow-2xl">
@@ -82,7 +80,7 @@
                         <div class="grid h-full place-items-center text-indigo-400"><svg class="h-14 w-14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 5h16v14H4zM8 12l3-3 5 6 2-2 2 2" /></svg></div>
                     @endif
                     <div class="absolute right-3 top-3 flex gap-1 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100">
-                        <details {{ request('edit') == $product->id ? 'open' : '' }}>
+                        <details {{ request('edit') == $product->id || old('_product_form') === 'edit-'.$product->id ? 'open' : '' }}>
                             <summary class="grid h-8 w-8 cursor-pointer list-none place-items-center rounded-lg bg-white text-indigo-600 shadow"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m4 20 4-1 11-11-3-3L5 16l-1 4ZM14 7l3 3" /></svg></summary>
                             <div class="fixed inset-0 z-40 bg-slate-950/30"></div>
                             <div class="fixed inset-x-4 top-6 z-50 mx-auto max-h-[90vh] max-w-3xl overflow-y-auto rounded-xl bg-white p-6 shadow-2xl">
@@ -96,6 +94,13 @@
                 <div class="p-4">
                     <p class="truncate text-sm font-extrabold text-slate-900">{{ $product->name }}</p>
                     <p class="mt-0.5 truncate text-[11px] font-semibold text-slate-400">{{ $product->category?->name ?? 'Uncategorised' }} / {{ $product->sku }}</p>
+                    @if ($product->sizes->isNotEmpty())
+                        <div class="mt-2 flex flex-wrap gap-1">
+                            @foreach ($product->sizes as $productSize)
+                                <span class="rounded bg-indigo-50 px-2 py-0.5 text-[10px] font-extrabold text-indigo-600">{{ $productSize->size }}: {{ $productSize->stock_quantity }}</span>
+                            @endforeach
+                        </div>
+                    @endif
                     <div class="mt-3 flex items-center justify-between gap-2">
                         <p class="text-base font-extrabold text-indigo-600">RM {{ number_format($product->price, 2) }}</p>
                         <p class="text-[11px] font-bold {{ $product->stock_quantity === 0 ? 'text-rose-500' : ($product->stock_quantity <= $product->min_stock_level ? 'text-amber-500' : 'text-slate-400') }}">{{ $product->stock_quantity === 0 ? 'Out of stock' : ($product->stock_quantity <= $product->min_stock_level ? 'Low: '.$product->stock_quantity : 'Stock: '.$product->stock_quantity) }}</p>

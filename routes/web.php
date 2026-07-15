@@ -51,6 +51,7 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
 
     Route::view('settings', 'settings')->name('settings');
 
+    Route::get('notifications/changes', [NotificationController::class, 'changes'])->name('notifications.changes');
     Route::get('notifications', [NotificationController::class, 'index'])->name('notifications');
     Route::post('notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.readAll');
     Route::patch('notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');

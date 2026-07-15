@@ -4,8 +4,6 @@
 @section('page-title', 'Orders')
 
 @section('content')
-@include('partials.admin-alerts')
-
 @php
     $paymentStatuses = ['Unpaid', 'Partial', 'Paid', 'Refunded'];
     $statusClass = [
@@ -72,14 +70,27 @@
             </tr></thead>
             <tbody class="divide-y divide-slate-100">
             @forelse ($orders as $order)
+                @php
+                    $userName = $order->user?->username ?: $order->user?->name ?: $order->customer?->parent_name ?: 'Unknown user';
+                    $studentName = $order->student?->name;
+                    $studentClass = $order->student?->class;
+
+                    if (! $studentName && $order->customer?->student_name && $order->customer->student_name !== '-') {
+                        $studentName = $order->customer->student_name;
+                        $studentClass = $order->customer->class !== '-' ? $order->customer->class : null;
+                    }
+
+                    $studentLabel = $studentName
+                        ? $studentName . ($studentClass ? ' (' . $studentClass . ')' : '')
+                        : 'Not recorded';
+                @endphp
                 <tr data-order-row="{{ $order->id }}" class="align-top">
                     <td class="py-4 pr-4">
                         <p class="font-extrabold text-slate-900">{{ $order->order_number }}</p>
                         <p class="text-xs font-bold text-slate-400">{{ $order->created_at->format('d M Y, h:i A') }}</p>
                     </td>
                     <td class="py-4 pr-4">
-                        <p class="font-bold text-slate-700">{{ $order->customer?->parent_name ?? 'Unknown parent' }}</p>
-                        <p class="text-xs font-semibold text-slate-400">{{ $order->customer?->student_name }} {{ $order->customer?->class ? '(' . $order->customer->class . ')' : '' }}</p>
+                        <p class="font-bold text-slate-700">{{ $userName }}</p>
                     </td>
                     <td class="py-4 pr-4 font-semibold text-slate-600">{{ $order->orderItems->sum('quantity') }} item(s)</td>
                     <td class="py-4 pr-4 font-extrabold">RM {{ number_format($order->total_amount, 2) }}</td>
@@ -95,7 +106,7 @@
                                 <div class="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                                     <div>
                                         <h2 class="text-lg font-extrabold">{{ $order->order_number }}</h2>
-                                        <p class="text-sm font-medium text-slate-500">{{ $order->customer?->parent_name }} for {{ $order->customer?->student_name }}</p>
+                                        <p class="text-sm font-medium text-slate-500">Ordered by {{ $userName }}</p>
                                     </div>
                                     <div class="flex items-center gap-2">
                                         <span data-order-status class="rounded-full px-3 py-1 text-xs font-extrabold {{ $statusClass[$order->status] ?? 'bg-slate-100 text-slate-600' }}">{{ $order->status }}</span>
@@ -105,25 +116,43 @@
 
                                 <div class="grid gap-5 lg:grid-cols-[1fr_20rem]">
                                     <div>
-                                        <h3 class="mb-3 text-sm font-extrabold text-slate-500">Order Items</h3>
-                                        <div class="divide-y divide-slate-100 rounded-lg ring-1 ring-slate-100">
+                                        <div class="mb-3 flex items-center justify-between">
+                                            <h3 class="text-sm font-extrabold text-slate-700">Order Items</h3>
+                                            <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-600">{{ $order->orderItems->sum('quantity') }} item(s)</span>
+                                        </div>
+                                        <div class="space-y-3">
                                             @foreach ($order->orderItems as $item)
-                                                <div class="grid grid-cols-[1fr_auto] gap-3 p-3">
-                                                    <div>
-                                                        <p class="font-bold">{{ $item->product?->name ?? 'Deleted product' }}</p>
-                                                        <p class="text-xs text-slate-400">RM {{ number_format($item->unit_price, 2) }} x {{ $item->quantity }}</p>
+                                                <article class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                                    <div class="flex flex-wrap items-start justify-between gap-3">
+                                                        <div>
+                                                            <p class="text-base font-extrabold text-slate-900">{{ $item->product?->name ?? 'Deleted product' }}</p>
+                                                            <p class="mt-1 text-sm font-semibold text-slate-500">Quantity: {{ $item->quantity }} &middot; Item price: RM {{ number_format($item->unit_price, 2) }}</p>
+                                                        </div>
+                                                        @if ($item->size)
+                                                            <span class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-extrabold text-white shadow-sm">
+                                                                <span class="text-indigo-200">SIZE</span>
+                                                                <span class="text-base leading-none">{{ $item->size }}</span>
+                                                            </span>
+                                                        @else
+                                                            <span class="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-slate-500 ring-1 ring-slate-200">No size</span>
+                                                        @endif
                                                     </div>
-                                                    <p class="font-extrabold">RM {{ number_format($item->subtotal, 2) }}</p>
-                                                </div>
+
+                                                    <p class="mt-4 border-t border-slate-200 pt-3 text-right text-sm font-bold text-slate-500">
+                                                        Total: <span class="text-base font-extrabold text-indigo-700">RM {{ number_format($item->subtotal, 2) }}</span>
+                                                    </p>
+                                                </article>
                                             @endforeach
                                         </div>
                                     </div>
 
                                     <div class="space-y-4">
                                         <div class="rounded-lg bg-slate-50 p-4">
-                                            <p class="text-xs font-extrabold uppercase text-slate-400">Customer</p>
-                                            <p class="mt-2 font-bold">{{ $order->customer?->parent_name }}</p>
-                                            <p class="text-sm text-slate-500">{{ $order->customer?->phone }} &middot; {{ $order->customer?->email }}</p>
+                                            <p class="text-xs font-extrabold uppercase text-slate-400">Purchase For</p>
+                                            <p class="mt-2 font-bold text-indigo-700">{{ $studentLabel }}</p>
+                                            <p class="mt-3 text-xs font-extrabold uppercase text-slate-400">Parent Account</p>
+                                            <p class="mt-1 font-bold">{{ $userName }}</p>
+                                            <p class="text-sm text-slate-500">{{ $order->user?->phone_number ?: $order->customer?->phone }} &middot; {{ $order->user?->email ?: $order->customer?->email }}</p>
                                             <p class="mt-2 text-sm text-slate-500">{{ $order->customer?->address }}</p>
                                         </div>
 
@@ -196,7 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function updateStatus(row, status) {
+    function updateStatus(row, status, forceFormUpdate = false) {
         const classes = (statusClasses[status] ?? defaultStatusClasses.join(' ')).split(' ');
 
         row.querySelectorAll('[data-order-status]').forEach((badge) => {
@@ -205,8 +234,9 @@ document.addEventListener('DOMContentLoaded', () => {
             badge.textContent = status;
         });
 
-        const select = row.querySelector('[data-status-form] select[name="status"]');
-        if (select) {
+        const form = row.querySelector('[data-status-form]');
+        const select = form?.querySelector('select[name="status"]');
+        if (select && (forceFormUpdate || form.dataset.edited !== 'true')) {
             select.value = status;
         }
     }
@@ -245,6 +275,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.querySelectorAll('[data-status-form]').forEach((form) => {
+        form.querySelector('select[name="status"]')?.addEventListener('change', () => {
+            form.dataset.edited = 'true';
+        });
+
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
 
@@ -253,6 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const originalText = button.textContent;
             button.disabled = true;
             button.textContent = 'Saving...';
+            form.dataset.edited = 'true';
 
             try {
                 const response = await fetch(form.action, {
@@ -272,9 +307,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     throw new Error(validationMessage || 'Failed to update order status.');
                 }
 
-                updateStatus(row, data.order.status);
+                delete form.dataset.edited;
+                updateStatus(row, data.order.status, true);
                 updateStats(data.stats);
-                addHistory(row, data.history);
+                if (data.history) {
+                    addHistory(row, data.history);
+                }
                 form.querySelector('textarea[name="notes"]').value = '';
                 window.showToast(data.message);
             } catch (error) {
