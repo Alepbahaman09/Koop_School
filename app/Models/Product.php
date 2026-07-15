@@ -7,11 +7,8 @@ use Illuminate\Support\Facades\Storage;
 
 class Product extends Model
 {
-    protected $fillable = ['category_id', 'sku', 'name', 'description', 'price', 'stock_quantity', 'min_stock_level', 'image', 'sizes'];
+    protected $fillable = ['category_id', 'sku', 'name', 'description', 'price', 'stock_quantity', 'min_stock_level', 'image'];
 
-    protected $casts = [
-        'sizes' => 'array',
-    ];
 
     public function getImageUrlAttribute(): ?string
     {
