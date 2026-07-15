@@ -422,14 +422,71 @@
 
             {{-- NFC Card panel --}}
             <div id="panel-NFC Card" style="display:none;">
-                <div class="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-center">
-                    <div class="text-3xl mb-2">📶</div>
-                    <div class="text-sm font-bold text-blue-700">Tap NFC Card to Continue</div>
-                    <div class="text-xs text-blue-400 mt-1">Ask student to tap their NFC card on the reader</div>
-                    <div class="mt-3 flex gap-1 justify-center">
-                        <div class="w-2 h-2 rounded-full bg-blue-400 animate-bounce" style="animation-delay:0s"></div>
-                        <div class="w-2 h-2 rounded-full bg-blue-400 animate-bounce" style="animation-delay:.15s"></div>
-                        <div class="w-2 h-2 rounded-full bg-blue-400 animate-bounce" style="animation-delay:.30s"></div>
+                {{-- Hidden keyboard-wedge input (captures scanner output) --}}
+                <input type="text" id="nfc-wedge-input" autocomplete="off" inputmode="none"
+                    style="position:fixed;top:-200px;left:-200px;width:1px;height:1px;opacity:0;pointer-events:none;">
+
+                {{-- Waiting state (before card tap) --}}
+                <div id="nfc-waiting-state">
+                    <div class="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-center">
+                        <div class="nfc-pulse-wrap" style="position:relative;width:72px;height:72px;margin:0 auto 10px;display:flex;align-items:center;justify-content:center;">
+                            <div style="position:absolute;width:100%;height:100%;border-radius:50%;border:2px solid rgba(37,99,235,.3);animation:nfc-ring 2s ease-out infinite;"></div>
+                            <div style="position:absolute;width:70%;height:70%;border-radius:50%;border:2px solid rgba(37,99,235,.3);animation:nfc-ring 2s ease-out infinite;animation-delay:.4s;"></div>
+                            <div style="width:44px;height:44px;background:#2563eb;border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative;z-index:2;">
+                                <svg width="22" height="22" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                                    <path d="M6 8.5C7.5 7 9.6 6 12 6s4.5 1 6 2.5"/>
+                                    <path d="M8.5 11C9.5 10 10.7 9.5 12 9.5s2.5.5 3.5 1.5"/>
+                                    <path d="M11 14h.01" stroke-width="2.5"/>
+                                    <path d="M3 5.5C5.4 3.3 8.5 2 12 2s6.6 1.3 9 3.5"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="text-sm font-bold text-blue-700">Tap NFC Card to Continue</div>
+                        <div class="text-xs text-blue-400 mt-1">Ask student to tap their NFC card on the reader</div>
+                    </div>
+
+                    {{-- Simulate-tap helper (dev/testing) --}}
+                    @if($cards->count() > 0)
+                    <div class="mt-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                        <div class="text-xs font-bold text-amber-700 mb-2 flex items-center gap-1">
+                            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                            Dev: Simulate Card Tap
+                        </div>
+                        <div class="grid gap-1.5" style="grid-template-columns:1fr 1fr;">
+                            @foreach($cards->take(4) as $c)
+                            <button type="button"
+                                onclick="simulateNfcTap('{{ $c->card_uid }}')"
+                                class="bg-white border border-amber-200 rounded-lg px-2 py-1.5 text-left hover:bg-amber-100 transition-colors">
+                                <div class="text-xs font-bold text-slate-700 truncate">{{ $c->owner }}</div>
+                                <div class="text-xs text-slate-400">RM {{ number_format($c->balance, 2) }}</div>
+                            </button>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
+                </div>
+
+                {{-- Card scanned state --}}
+                <div id="nfc-scanned-state" style="display:none;">
+                    <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center shrink-0">
+                                <svg width="20" height="20" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="text-sm font-black text-emerald-800" id="nfc-card-owner">—</div>
+                                <div class="text-xs text-emerald-600">Balance: RM <span id="nfc-card-balance">—</span></div>
+                            </div>
+                            <button onclick="resetNfcScan()" class="text-xs font-bold text-slate-400 hover:text-red-500 transition-colors">Reset</button>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Error state --}}
+                <div id="nfc-error-state" style="display:none;">
+                    <div class="bg-red-50 border border-red-200 rounded-2xl p-4 text-center">
+                        <div class="text-red-500 font-bold text-sm" id="nfc-error-msg">Card error</div>
+                        <button onclick="resetNfcScan()" class="text-xs font-bold text-blue-500 mt-2">Try again</button>
                     </div>
                 </div>
             </div>
@@ -864,6 +921,11 @@ function updateCheckoutBtn() {
         const received = parseFloat(document.getElementById('cash-received').value) || 0;
         disabled = received < total;
         btn.textContent = disabled ? `Enter RM${total.toFixed(2)} or more` : 'Complete Payment';
+    } else if (payMethod === 'NFC Card' && !disabled) {
+        disabled = !scannedCardUid;
+        btn.innerHTML = disabled
+            ? 'Tap NFC Card First'
+            : `<span class="flex items-center justify-center gap-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>Complete Payment</span>`;
     } else {
         btn.innerHTML = `<span class="flex items-center justify-center gap-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
@@ -874,58 +936,153 @@ function updateCheckoutBtn() {
 }
 
 // ─────────────────────────────────────────────
-// CHECKOUT
+// NFC CARD SCANNER (keyboard-wedge)
+// ─────────────────────────────────────────────
+let scannedCardUid = null;
+
+document.addEventListener('keydown', e => {
+    if (payMethod !== 'NFC Card') return;
+    const inp = document.getElementById('nfc-wedge-input');
+    if (document.activeElement !== inp) inp.focus();
+    if (e.key === 'Enter') {
+        const uid = inp.value.trim();
+        if (uid) { processNfcScan(uid); }
+        inp.value = '';
+    }
+});
+
+function simulateNfcTap(uid) { processNfcScan(uid); }
+
+function processNfcScan(uid) {
+    scannedCardUid = null;
+    document.getElementById('nfc-waiting-state').style.display = 'none';
+    document.getElementById('nfc-scanned-state').style.display = 'none';
+    document.getElementById('nfc-error-state').style.display   = 'none';
+
+    fetch('{{ route("cashier.card-lookup") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify({ card_uid: uid }),
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) {
+            scannedCardUid = uid;
+            document.getElementById('nfc-card-owner').textContent   = d.owner;
+            document.getElementById('nfc-card-balance').textContent = d.balance;
+            document.getElementById('nfc-scanned-state').style.display = 'block';
+            updateCheckoutBtn();
+        } else {
+            document.getElementById('nfc-error-msg').textContent = d.message || 'Card error.';
+            document.getElementById('nfc-error-state').style.display = 'block';
+        }
+    })
+    .catch(() => {
+        document.getElementById('nfc-error-msg').textContent = 'Connection error. Please retry.';
+        document.getElementById('nfc-error-state').style.display = 'block';
+    });
+}
+
+function resetNfcScan() {
+    scannedCardUid = null;
+    document.getElementById('nfc-waiting-state').style.display = 'block';
+    document.getElementById('nfc-scanned-state').style.display = 'none';
+    document.getElementById('nfc-error-state').style.display   = 'none';
+    updateCheckoutBtn();
+    const inp = document.getElementById('nfc-wedge-input');
+    if (inp) { inp.value = ''; inp.focus(); }
+}
+
+// ─────────────────────────────────────────────
+// CHECKOUT  — real API call to /cashier/sale
 // ─────────────────────────────────────────────
 function doCheckout() {
     if (cart.length === 0) return;
-    const total    = getTotal();
-    const received = parseFloat(document.getElementById('cash-received').value) || 0;
-    const change   = payMethod === 'Cash' ? (received - total) : 0;
-    const txnId    = `POS-${String(txnCounter++).padStart(6,'0')}`;
-    const now      = new Date();
-    const dateStr  = now.toLocaleDateString('en-MY', { day:'2-digit', month:'short', year:'numeric' })
-                   + ' ' + now.toLocaleTimeString('en-MY', { hour:'2-digit', minute:'2-digit', hour12:true });
 
-    // Populate receipt
-    document.getElementById('r-total').textContent   = `RM${total.toFixed(2)}`;
-    document.getElementById('r-txn-id').textContent  = txnId;
-    document.getElementById('r-date').textContent    = dateStr;
-    document.getElementById('r-method').textContent  = payMethod;
-    document.getElementById('r-cashier').textContent = '{{ auth()->user()->name ?? "Cashier" }}';
+    const total       = getTotal();
+    const received    = parseFloat(document.getElementById('cash-received').value) || 0;
+    const btn         = document.getElementById('checkout-btn');
+    btn.disabled      = true;
+    btn.textContent   = 'Processing…';
 
-    const changeRow = document.getElementById('r-change-row');
-    if (payMethod === 'Cash') {
-        changeRow.classList.remove('hidden');
-        changeRow.style.display = 'grid';
-        document.getElementById('r-received').textContent = `RM${received.toFixed(2)}`;
-        document.getElementById('r-change').textContent   = `RM${change.toFixed(2)}`;
-    } else {
-        changeRow.classList.add('hidden');
-        changeRow.style.display = 'none';
-    }
+    const payload = {
+        items:          cart.map(c => ({ product_id: c.product.id, qty: c.qty })),
+        payment_method: payMethod,
+        cash_received:  payMethod === 'Cash' ? received : null,
+        card_uid:       payMethod === 'NFC Card' ? scannedCardUid : null,
+    };
 
-    // Receipt items
-    const tbody = document.getElementById('r-items');
-    tbody.innerHTML = cart.map(({ product:p, qty }) => `
-        <tr>
-            <td>${p.emoji} ${p.name}</td>
-            <td class="text-right font-semibold">${qty}</td>
-            <td class="text-right">RM${p.price.toFixed(2)}</td>
-            <td class="text-right font-bold text-slate-800">RM${(p.price * qty).toFixed(2)}</td>
-        </tr>`).join('') + `
-        <tr class="bg-blue-50">
-            <td colspan="3" class="font-black text-blue-800 text-right">TOTAL</td>
-            <td class="text-right font-black text-blue-800">RM${total.toFixed(2)}</td>
-        </tr>`;
+    fetch('{{ route("cashier.sale") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    })
+    .then(r => r.json())
+    .then(d => {
+        btn.disabled = false;
+        updateCheckoutBtn();
 
-    // Add to sample history
-    SAMPLE_HISTORY.unshift({
-        id: txnId, date: dateStr, total,
-        method: payMethod,
-        status: 'Paid', cashier: '{{ auth()->user()->name ?? "Cashier" }}'
+        if (!d.success) {
+            showPosError(d.message || 'Payment failed. Please try again.');
+            return;
+        }
+
+        // ── Populate receipt modal with REAL data ──
+        const now     = new Date();
+        const dateStr = now.toLocaleDateString('en-MY', { day:'2-digit', month:'short', year:'numeric' })
+                      + ' ' + now.toLocaleTimeString('en-MY', { hour:'2-digit', minute:'2-digit', hour12:true });
+
+        document.getElementById('r-total').textContent   = `RM${d.total.toFixed(2)}`;
+        document.getElementById('r-txn-id').textContent  = d.order_number;
+        document.getElementById('r-date').textContent    = dateStr;
+        document.getElementById('r-method').textContent  = d.payment_method;
+        document.getElementById('r-cashier').textContent = '{{ auth()->user()->name ?? "Cashier" }}';
+
+        const changeRow = document.getElementById('r-change-row');
+        if (d.payment_method === 'Cash') {
+            changeRow.classList.remove('hidden');
+            changeRow.style.display = 'grid';
+            document.getElementById('r-received').textContent = `RM${parseFloat(d.cash_received).toFixed(2)}`;
+            document.getElementById('r-change').textContent   = `RM${parseFloat(d.change).toFixed(2)}`;
+        } else {
+            changeRow.classList.add('hidden');
+            changeRow.style.display = 'none';
+            // Show NFC card info if available
+            if (d.card_owner) {
+                document.getElementById('r-cashier').textContent =
+                    '{{ auth()->user()->name ?? "Cashier" }}' + ' · ' + d.card_owner + ' (RM' + d.remaining_balance + ' left)';
+            }
+        }
+
+        // Receipt items
+        const tbody = document.getElementById('r-items');
+        tbody.innerHTML = cart.map(({ product:p, qty }) => `
+            <tr>
+                <td>${p.name}</td>
+                <td class="text-right font-semibold">${qty}</td>
+                <td class="text-right">RM${p.price.toFixed(2)}</td>
+                <td class="text-right font-bold text-slate-800">RM${(p.price * qty).toFixed(2)}</td>
+            </tr>`).join('') + `
+            <tr class="bg-blue-50">
+                <td colspan="3" class="font-black text-blue-800 text-right">TOTAL</td>
+                <td class="text-right font-black text-blue-800">RM${d.total.toFixed(2)}</td>
+            </tr>`;
+
+        openModal('receipt-modal');
+    })
+    .catch(() => {
+        btn.disabled = false;
+        updateCheckoutBtn();
+        showPosError('Connection error. Please check your network and retry.');
     });
-
-    openModal('receipt-modal');
 }
 
 function printReceipt() {
@@ -935,7 +1092,9 @@ function printReceipt() {
 function newSale() {
     closeModal('receipt-modal');
     cart = [];
+    scannedCardUid = null;
     document.getElementById('cash-received').value = '';
+    resetNfcScan();
     renderCart();
     toast('✅ Ready for new sale!');
 }
@@ -944,8 +1103,17 @@ function newSale() {
 // ORDER HISTORY
 // ─────────────────────────────────────────────
 function openHistoryModal() {
-    renderHistory(SAMPLE_HISTORY);
+    renderHistory([]);
     openModal('history-modal');
+    // Load real orders from DB
+    fetch('{{ route("cashier.history") }}', {
+        headers: { 'Accept': 'application/json' },
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) renderHistory(d.data);
+    })
+    .catch(() => renderHistory([]));
 }
 function closeHistoryModal() { closeModal('history-modal'); }
 
@@ -954,7 +1122,7 @@ function renderHistory(list) {
     const statusBadge = s => s === 'Paid'
         ? '<span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 text-xs font-bold px-2.5 py-1 rounded-full">✓ Paid</span>'
         : '<span class="inline-flex items-center bg-amber-50 text-amber-700 text-xs font-bold px-2.5 py-1 rounded-full">Pending</span>';
-    const methodIcon = m => ({ Cash:'💵', DuitNow:'📱','DuitNow QR':'📱', Card:'💳' }[m] || '💰');
+    const methodIcon = m => ({ Cash:'💵', 'NFC Card':'📶', Card:'💳' }[m] || '💰');
 
     tbody.innerHTML = list.length === 0
         ? `<tr><td colspan="6" class="text-center py-8 text-slate-400 font-semibold">No transactions found</td></tr>`

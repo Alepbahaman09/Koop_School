@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AnalyticsController;
+use App\Http\Controllers\CashierController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
@@ -48,6 +49,11 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('finance/export', [FinanceController::class, 'export'])->name('finance.export');
 
     Route::resource('suppliers', SupplierController::class)->except(['create', 'edit', 'show']);
+
+    // ── Cashier Terminal (dedicated — separate from app PaymentController) ──
+    Route::post('cashier/sale',        [CashierController::class, 'sale'])->name('cashier.sale');
+    Route::post('cashier/card-lookup', [CashierController::class, 'cardLookup'])->name('cashier.card-lookup');
+    Route::get('cashier/history',      [CashierController::class, 'history'])->name('cashier.history');
 
     Route::view('settings', 'settings')->name('settings');
 
