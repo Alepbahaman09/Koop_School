@@ -52,6 +52,7 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
 
     // ── Cashier Terminal (dedicated — separate from app PaymentController) ──
     Route::post('cashier/sale',        [CashierController::class, 'sale'])->name('cashier.sale');
+    Route::get('cashier/sale',         function () { return redirect()->route('payment.index'); });
     Route::post('cashier/card-lookup', [CashierController::class, 'cardLookup'])->name('cashier.card-lookup');
     Route::get('cashier/history',      [CashierController::class, 'history'])->name('cashier.history');
 

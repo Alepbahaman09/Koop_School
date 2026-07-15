@@ -16,7 +16,7 @@ class PaymentController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'order_id' => 'required|exists:orders,id',
-            'payment_method' => 'required|in:Cash,NFC Card',
+            'payment_method' => 'required|in:Cash,Card,Online Banking,E-Wallet,Cheque,NFC Card',
             'amount' => 'required|numeric|min:0.01',
             'notes' => 'nullable|string',
         ]);
