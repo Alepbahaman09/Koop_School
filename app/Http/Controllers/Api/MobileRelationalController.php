@@ -14,6 +14,7 @@ use App\Models\Payment;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class MobileRelationalController extends Controller
@@ -319,6 +320,8 @@ class MobileRelationalController extends Controller
             'notes' => $data['note'] ?? null,
         ]);
 
+        $this->bustSalesCaches();
+
         AdminNotification::forOrder($order->load('customer'), 'mobile_sql');
 
         return $this->transactionDocument($order->load(['orderItems.product', 'payments']));
@@ -569,6 +572,27 @@ class MobileRelationalController extends Controller
 
         $card->decrement('balance', $amount);
         $card->update(['last_used_at' => now()]);
+    }
+
+    private function bustSalesCaches(): void
+    {
+        Cache::forget('dashboard.order_totals.current_statuses');
+        Cache::forget('dashboard.recent_payments');
+        Cache::forget('dashboard.customer_totals');
+        Cache::forget('dashboard.product_totals');
+
+        foreach ([7, 30, 90, 365] as $days) {
+            Cache::forget("analytics.index.top_items.{$days}");
+        }
+
+        Cache::forget('finance.index.'.now()->format('Y-m'));
+        Cache::forget('finance.index.'.now()->subMonthNoOverflow()->format('Y-m'));
+
+        $today = now()->toDateString();
+        for ($i = 0; $i <= 30; $i++) {
+            $rangeStart = now()->subDays($i + 9)->toDateString();
+            Cache::forget("dashboard.sales_by_date.{$rangeStart}.{$today}");
+        }
     }
 
     private function paymentMethod(array $data): string
