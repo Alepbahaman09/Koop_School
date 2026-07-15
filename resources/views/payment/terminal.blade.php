@@ -444,26 +444,6 @@
                         <div class="text-sm font-bold text-blue-700">Tap NFC Card to Continue</div>
                         <div class="text-xs text-blue-400 mt-1">Ask student to tap their NFC card on the reader</div>
                     </div>
-
-                    {{-- Simulate-tap helper (dev/testing) --}}
-                    @if($cards->count() > 0)
-                    <div class="mt-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
-                        <div class="text-xs font-bold text-amber-700 mb-2 flex items-center gap-1">
-                            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                            Dev: Simulate Card Tap
-                        </div>
-                        <div class="grid gap-1.5" style="grid-template-columns:1fr 1fr;">
-                            @foreach($cards->take(4) as $c)
-                            <button type="button"
-                                onclick="simulateNfcTap('{{ $c->card_uid }}')"
-                                class="bg-white border border-amber-200 rounded-lg px-2 py-1.5 text-left hover:bg-amber-100 transition-colors">
-                                <div class="text-xs font-bold text-slate-700 truncate">{{ $c->owner }}</div>
-                                <div class="text-xs text-slate-400">RM {{ number_format($c->balance, 2) }}</div>
-                            </button>
-                            @endforeach
-                        </div>
-                    </div>
-                    @endif
                 </div>
 
                 {{-- Card scanned state --}}
@@ -951,7 +931,6 @@ document.addEventListener('keydown', e => {
     }
 });
 
-function simulateNfcTap(uid) { processNfcScan(uid); }
 
 function processNfcScan(uid) {
     scannedCardUid = null;
@@ -1031,7 +1010,7 @@ function doCheckout() {
         updateCheckoutBtn();
 
         if (!d.success) {
-            showPosError(d.message || 'Payment failed. Please try again.');
+            toast(d.message || 'Payment failed. Please try again.');
             return;
         }
 
@@ -1081,7 +1060,7 @@ function doCheckout() {
     .catch(() => {
         btn.disabled = false;
         updateCheckoutBtn();
-        showPosError('Connection error. Please check your network and retry.');
+        toast('Connection error. Please check your network and retry.');
     });
 }
 
