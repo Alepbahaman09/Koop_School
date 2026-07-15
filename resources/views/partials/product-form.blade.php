@@ -23,6 +23,27 @@
 <label class="text-xs font-extrabold uppercase text-slate-400 sm:col-span-2">Description
     <textarea name="description" rows="3" class="mt-1 w-full rounded-lg border-slate-200 text-sm">{{ old('description', $product?->description) }}</textarea>
 </label>
+<div class="sm:col-span-2">
+    <p class="text-xs font-extrabold uppercase text-slate-400 mb-2">Sizes Available</p>
+    <div class="flex flex-wrap gap-2">
+        @php
+            $selectedSizes = old('sizes', $product?->sizes ?? []);
+        @endphp
+        @foreach (['S', 'M', 'L', 'XL'] as $size)
+            <label class="relative flex cursor-pointer select-none">
+                <input type="checkbox" name="sizes[]" value="{{ $size }}" class="peer sr-only"
+                    {{ in_array($size, (array) $selectedSizes) ? 'checked' : '' }}>
+                <span class="flex h-10 w-12 items-center justify-center rounded-lg border-2 border-slate-200 bg-white text-sm font-extrabold text-slate-400 transition
+                    peer-checked:border-indigo-500 peer-checked:bg-indigo-50 peer-checked:text-indigo-700
+                    hover:border-indigo-300 hover:text-indigo-500">
+                    {{ $size }}
+                </span>
+            </label>
+        @endforeach
+    </div>
+    <p class="mt-1.5 text-[11px] font-semibold text-slate-400">Optional — leave all unchecked if sizes don't apply.</p>
+    @error('sizes') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
+</div>
 <label class="text-xs font-extrabold uppercase text-slate-400 sm:col-span-2">Product Image
     <div class="mt-2 flex items-center gap-4 rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3">
         <div class="h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-white ring-1 ring-slate-200">

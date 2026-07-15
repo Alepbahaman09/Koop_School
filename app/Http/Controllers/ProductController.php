@@ -86,14 +86,16 @@ class ProductController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'category_id' => 'required|exists:categories,id',
-            'sku' => 'required|unique:products,sku',
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'price' => 'required|numeric|min:0',
+            'category_id'    => 'required|exists:categories,id',
+            'sku'            => 'required|unique:products,sku',
+            'name'           => 'required|string|max:255',
+            'description'    => 'nullable|string',
+            'price'          => 'required|numeric|min:0',
             'stock_quantity' => 'required|integer|min:0',
-            'min_stock_level' => 'required|integer|min:0',
-            'image' => 'nullable|image|max:2048',
+            'min_stock_level'=> 'required|integer|min:0',
+            'image'          => 'nullable|image|max:2048',
+            'sizes'          => 'nullable|array',
+            'sizes.*'        => 'in:S,M,L,XL',
         ]);
 
         if ($request->hasFile('image')) {
@@ -131,15 +133,22 @@ class ProductController extends Controller
     public function update(Request $request, Product $product)
     {
         $validated = $request->validate([
-            'category_id' => 'required|exists:categories,id',
-            'sku' => 'required|unique:products,sku,'.$product->id,
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'price' => 'required|numeric|min:0',
+            'category_id'    => 'required|exists:categories,id',
+            'sku'            => 'required|unique:products,sku,'.$product->id,
+            'name'           => 'required|string|max:255',
+            'description'    => 'nullable|string',
+            'price'          => 'required|numeric|min:0',
             'stock_quantity' => 'required|integer|min:0',
-            'min_stock_level' => 'required|integer|min:0',
-            'image' => 'nullable|image|max:2048',
+            'min_stock_level'=> 'required|integer|min:0',
+            'image'          => 'nullable|image|max:2048',
+            'sizes'          => 'nullable|array',
+            'sizes.*'        => 'in:S,M,L,XL',
         ]);
+
+        // If no sizes were checked, explicitly set to null so existing data is cleared.
+        if (empty($validated['sizes'])) {
+            $validated['sizes'] = null;
+        }
 
         $oldImage = $product->image;
         $oldStock = $product->stock_quantity;
