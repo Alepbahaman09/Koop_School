@@ -9,29 +9,29 @@ services:
       - key: APP_DEBUG
         value: "false"
       - key: APP_URL
-        sync: false # Set to your Render custom domain or .onrender.com URL (e.g., https://your-app.onrender.com)
+        value: ""
       - key: APP_KEY
-        generateValue: true # Render will generate a random key, but for Laravel it should be base64:32bytes. User can also manually provide a secure Laravel key.
+        value: ""
       - key: LOG_CHANNEL
         value: stderr
       - key: DB_CONNECTION
         value: pgsql
       - key: DB_HOST
-        sync: false # Set this in Render dashboard (e.g. db.aozubsvfcflmutlicrzo.supabase.co)
+        value: ""
       - key: DB_PORT
         value: "5432"
       - key: DB_DATABASE
-        sync: false # Set this in Render dashboard (e.g. postgres)
+        value: ""
       - key: DB_USERNAME
-        sync: false # Set this in Render dashboard (e.g. postgres)
+        value: ""
       - key: DB_PASSWORD
-        sync: false # Set this in Render dashboard
+        value: ""
       - key: DB_SSLMODE
         value: require
       - key: SUPABASE_URL
-        sync: false
+        value: ""
       - key: SUPABASE_ANON_KEY
-        sync: false
+        value: ""
       - key: SESSION_DRIVER
         value: cookie
       - key: CACHE_STORE
