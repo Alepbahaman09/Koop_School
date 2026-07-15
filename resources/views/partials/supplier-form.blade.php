@@ -3,10 +3,10 @@
 
 <div class="space-y-1">
     <label class="text-xs font-bold text-slate-600">Contact Name <span class="text-rose-400">*</span></label>
-    <input name="name" value="{{ old('name', $s?->name) }}" required
+    <input name="supplier_name" value="{{ old('supplier_name', $s?->name) }}" required
         class="h-10 w-full rounded-lg border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-800 focus:border-indigo-400 focus:ring-indigo-200"
         placeholder="e.g. Ahmad Razif">
-    @error('name') <p class="text-xs text-rose-500">{{ $message }}</p> @enderror
+    @error('supplier_name') <p class="text-xs text-rose-500">{{ $message }}</p> @enderror
 </div>
 
 <div class="space-y-1">

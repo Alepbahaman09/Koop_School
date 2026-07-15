@@ -44,25 +44,27 @@ class SupplierController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name'         => 'required|filled|string|max:255',
-            'company_name' => 'nullable|string|max:255',
-            'email'        => 'required|email|unique:suppliers,email',
-            'phone'        => 'required|filled|string|max:50',
-            'address'      => 'nullable|string|max:1000',
-            'tax_number'   => 'nullable|string|max:100',
-            'is_active'    => 'nullable|boolean',
+            'supplier_name' => 'required|filled|string|max:255',
+            'company_name'  => 'nullable|string|max:255',
+            'email'         => 'required|email|unique:suppliers,email',
+            'phone'         => 'required|filled|string|max:50',
+            'address'       => 'nullable|string|max:1000',
+            'tax_number'    => 'nullable|string|max:100',
+            'is_active'     => 'nullable|boolean',
         ]);
 
-        // Guard: ConvertEmptyStringsToNull middleware can nullify fields after
-        // validation; this ensures name never reaches the DB as null.
-        if (empty($validated['name'] ?? '')) {
-            return redirect()->back()->withInput()
-                ->withErrors(['name' => 'The contact name field is required.']);
-        }
-
-        $validated['is_active'] = $request->boolean('is_active', true);
-
-        Supplier::create($validated);
+        // Use explicit attribute assignment to guarantee 'name' reaches the DB.
+        // Avoid mass-assignment via create($validated) because the 'supplier_name'
+        // input key must be remapped to the 'name' DB column.
+        $supplier = new Supplier();
+        $supplier->name         = $validated['supplier_name'];
+        $supplier->company_name = $validated['company_name'] ?? null;
+        $supplier->email        = $validated['email'];
+        $supplier->phone        = $validated['phone'];
+        $supplier->address      = $validated['address'] ?? null;
+        $supplier->tax_number   = $validated['tax_number'] ?? null;
+        $supplier->is_active    = $request->boolean('is_active', true);
+        $supplier->save();
 
         return redirect()->route('suppliers.index')
             ->with('success', 'Supplier created successfully.');
@@ -74,23 +76,23 @@ class SupplierController extends Controller
     public function update(Request $request, Supplier $supplier)
     {
         $validated = $request->validate([
-            'name'         => 'required|filled|string|max:255',
-            'company_name' => 'nullable|string|max:255',
-            'email'        => 'required|email|unique:suppliers,email,'.$supplier->id,
-            'phone'        => 'required|filled|string|max:50',
-            'address'      => 'nullable|string|max:1000',
-            'tax_number'   => 'nullable|string|max:100',
-            'is_active'    => 'nullable|boolean',
+            'supplier_name' => 'required|filled|string|max:255',
+            'company_name'  => 'nullable|string|max:255',
+            'email'         => 'required|email|unique:suppliers,email,'.$supplier->id,
+            'phone'         => 'required|filled|string|max:50',
+            'address'       => 'nullable|string|max:1000',
+            'tax_number'    => 'nullable|string|max:100',
+            'is_active'     => 'nullable|boolean',
         ]);
 
-        if (empty($validated['name'] ?? '')) {
-            return redirect()->back()->withInput()
-                ->withErrors(['name' => 'The contact name field is required.']);
-        }
-
-        $validated['is_active'] = $request->boolean('is_active');
-
-        $supplier->update($validated);
+        $supplier->name         = $validated['supplier_name'];
+        $supplier->company_name = $validated['company_name'] ?? null;
+        $supplier->email        = $validated['email'];
+        $supplier->phone        = $validated['phone'];
+        $supplier->address      = $validated['address'] ?? null;
+        $supplier->tax_number   = $validated['tax_number'] ?? null;
+        $supplier->is_active    = $request->boolean('is_active');
+        $supplier->save();
 
         return redirect()->route('suppliers.index')
             ->with('success', 'Supplier updated successfully.');
