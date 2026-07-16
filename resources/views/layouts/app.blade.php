@@ -17,7 +17,7 @@
     $inventoryItems = [
         ['label' => 'Suppliers', 'route' => 'suppliers.index', 'icon' => 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3Zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3Zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5Zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5Z'],
         ['label' => 'Stock Purchases', 'route' => 'stock-purchases.index', 'icon' => 'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2'],
-        ['label' => 'Manage Stock', 'route' => 'manage-stock.index', 'icon' => 'M3 10h11M3 14h7m-7-8h16M3 18h16M17 6v12m-2-2 2 2 2-2'],
+        //['label' => 'Manage Stock', 'route' => 'manage-stock.index', 'icon' => 'M3 10h11M3 14h7m-7-8h16M3 18h16M17 6v12m-2-2 2 2 2-2'],
     ];
 
     $toolItems = [
