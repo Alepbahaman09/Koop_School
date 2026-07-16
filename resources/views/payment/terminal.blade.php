@@ -223,6 +223,26 @@
         body.is-docked-window #docked-banner { display: block; }
         body.is-docked-window header { top: 30px; }
         body.is-docked-window .pos-grid { height: calc(100vh - 90px); margin-top: 30px; }
+
+        /* ── History button ── */
+        .history-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background-color: #1e293b;
+            color: #ffffff;
+            border: none;
+            border-radius: 12px;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color .15s;
+            font-family: inherit;
+        }
+        .history-btn:hover {
+            background-color: #334155;
+        }
     </style>
 </head>
 <body>
@@ -256,7 +276,7 @@
         </button>
 
         {{-- Order History --}}
-        <button onclick="openHistoryModal()" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl px-4 py-2 text-sm font-700 transition-colors" style="font-weight:700;">
+        <button onclick="openHistoryModal()" class="history-btn">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
@@ -612,6 +632,63 @@
                 <tbody id="history-tbody"></tbody>
             </table>
         </div>
+    </div>
+</div>
+
+{{-- ══════════ ORDER DETAIL MODAL ══════════ --}}
+<div class="modal-backdrop" id="order-detail-modal">
+    <div class="modal-card" style="max-width:520px;">
+        <div class="flex items-center justify-between p-6 border-b border-slate-100">
+            <div>
+                <div class="font-black text-slate-800 text-lg" id="od-order-number">Order Detail</div>
+                <div class="text-xs text-slate-400 font-semibold mt-0.5" id="od-date">—</div>
+            </div>
+            <button onclick="closeModal('order-detail-modal')" class="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors">
+                <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <div class="p-6">
+            {{-- Summary badges --}}
+            <div class="flex items-center gap-3 mb-5">
+                <div class="flex-1 bg-blue-50 rounded-2xl px-4 py-3 text-center">
+                    <div class="text-xs font-bold text-blue-400 mb-0.5">Total</div>
+                    <div class="text-xl font-black text-blue-700" id="od-total">—</div>
+                </div>
+                <div class="flex-1 bg-slate-50 rounded-2xl px-4 py-3 text-center">
+                    <div class="text-xs font-bold text-slate-400 mb-0.5">Method</div>
+                    <div class="text-base font-black text-slate-700" id="od-method">—</div>
+                </div>
+                <div class="flex-1 bg-emerald-50 rounded-2xl px-4 py-3 text-center">
+                    <div class="text-xs font-bold text-emerald-400 mb-0.5">Status</div>
+                    <div class="text-base font-black text-emerald-700" id="od-status">—</div>
+                </div>
+            </div>
+
+            {{-- Items table --}}
+            <div class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Items</div>
+            <div class="border border-slate-100 rounded-xl overflow-hidden mb-4">
+                <table class="receipt-table">
+                    <thead>
+                        <tr class="bg-slate-50">
+                            <th>Item</th>
+                            <th class="text-right">Qty</th>
+                            <th class="text-right">Price</th>
+                            <th class="text-right">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="od-items"></tbody>
+                </table>
+            </div>
+
+            {{-- Notes --}}
+            <div id="od-notes-wrap" class="hidden bg-slate-50 rounded-xl px-4 py-3 text-xs text-slate-500 font-semibold"></div>
+
+            <button onclick="closeModal('order-detail-modal')" class="mt-4 w-full bg-slate-800 hover:bg-slate-700 text-white rounded-2xl py-3 text-sm font-bold transition-colors">Close</button>
+        </div>
+        {{-- Loading state --}}
+        <div id="od-loading" class="hidden px-6 pb-8 text-center text-slate-400 font-semibold py-8">Loading…</div>
     </div>
 </div>
 
@@ -1081,7 +1158,11 @@ function newSale() {
 // ─────────────────────────────────────────────
 // ORDER HISTORY
 // ─────────────────────────────────────────────
+// Store real history data for searching
+let _historyData = [];
+
 function openHistoryModal() {
+    _historyData = [];
     renderHistory([]);
     openModal('history-modal');
     // Load real orders from DB
@@ -1090,7 +1171,12 @@ function openHistoryModal() {
     })
     .then(r => r.json())
     .then(d => {
-        if (d.success) renderHistory(d.data);
+        if (d.success) {
+            _historyData = d.data;
+            renderHistory(_historyData);
+        } else {
+            renderHistory([]);
+        }
     })
     .catch(() => renderHistory([]));
 }
@@ -1112,19 +1198,68 @@ function renderHistory(list) {
             <td><span class="font-black text-slate-800">RM${parseFloat(h.total).toFixed(2)}</span></td>
             <td><span class="font-semibold">${methodIcon(h.method)} ${h.method}</span></td>
             <td>${statusBadge(h.status)}</td>
-            <td><button onclick="toast('Details for ${h.id}')" class="text-xs font-bold text-blue-500 hover:text-blue-700">View</button></td>
+            <td><button onclick="openOrderDetail('${h.id}')" class="text-xs font-bold text-blue-500 hover:text-blue-700 px-2 py-1 rounded-lg hover:bg-blue-50 transition-colors">View</button></td>
         </tr>`).join('');
 }
 
 function filterHistory() {
-    const q = document.getElementById('hist-search').value.toLowerCase();
-    const filtered = SAMPLE_HISTORY.filter(h =>
-        h.id.toLowerCase().includes(q) ||
-        h.method.toLowerCase().includes(q) ||
-        h.cashier.toLowerCase().includes(q) ||
-        h.status.toLowerCase().includes(q)
+    const q = document.getElementById('hist-search').value.toLowerCase().trim();
+    if (!q) { renderHistory(_historyData); return; }
+    const filtered = _historyData.filter(h =>
+        (h.id   || '').toLowerCase().includes(q) ||
+        (h.method || '').toLowerCase().includes(q) ||
+        (h.status || '').toLowerCase().includes(q)
     );
     renderHistory(filtered);
+}
+
+// ─────────────────────────────────────────────
+// ORDER DETAIL MODAL
+// ─────────────────────────────────────────────
+function openOrderDetail(orderNumber) {
+    // Show the modal immediately with a loading state
+    document.getElementById('od-order-number').textContent = orderNumber;
+    document.getElementById('od-date').textContent         = '—';
+    document.getElementById('od-total').textContent        = '—';
+    document.getElementById('od-method').textContent       = '—';
+    document.getElementById('od-status').textContent       = '—';
+    document.getElementById('od-items').innerHTML          = '<tr><td colspan="4" class="text-center py-4 text-slate-400">Loading…</td></tr>';
+    document.getElementById('od-notes-wrap').classList.add('hidden');
+    openModal('order-detail-modal');
+
+    const url = '{{ url("cashier/order") }}/' + encodeURIComponent(orderNumber);
+    fetch(url, { headers: { 'Accept': 'application/json' } })
+        .then(r => r.json())
+        .then(d => {
+            if (!d.success) { document.getElementById('od-items').innerHTML = `<tr><td colspan="4" class="text-center py-4 text-red-400">${d.message || 'Failed to load.'}</td></tr>`; return; }
+            document.getElementById('od-order-number').textContent = d.order_number;
+            document.getElementById('od-date').textContent         = d.date;
+            document.getElementById('od-total').textContent        = `RM${parseFloat(d.total).toFixed(2)}`;
+            document.getElementById('od-method').textContent       = ({ Cash:'💵 Cash', 'NFC Card':'📶 NFC Card' }[d.payment_method] || d.payment_method);
+            document.getElementById('od-status').textContent       = d.status;
+
+            const methodIcon = m => ({ Cash:'💵', 'NFC Card':'📶', Card:'💳' }[m] || '💰');
+            document.getElementById('od-items').innerHTML = (d.items || []).map(item => `
+                <tr>
+                    <td>${item.name}</td>
+                    <td class="text-right font-semibold">${item.qty}</td>
+                    <td class="text-right">RM${parseFloat(item.unit_price).toFixed(2)}</td>
+                    <td class="text-right font-bold text-slate-800">RM${parseFloat(item.subtotal).toFixed(2)}</td>
+                </tr>`).join('') + `
+                <tr class="bg-blue-50">
+                    <td colspan="3" class="font-black text-blue-800 text-right">TOTAL</td>
+                    <td class="text-right font-black text-blue-800">RM${parseFloat(d.total).toFixed(2)}</td>
+                </tr>`;
+
+            if (d.notes) {
+                const notesEl = document.getElementById('od-notes-wrap');
+                notesEl.textContent = d.notes;
+                notesEl.classList.remove('hidden');
+            }
+        })
+        .catch(() => {
+            document.getElementById('od-items').innerHTML = '<tr><td colspan="4" class="text-center py-4 text-red-400">Connection error.</td></tr>';
+        });
 }
 
 // ─────────────────────────────────────────────

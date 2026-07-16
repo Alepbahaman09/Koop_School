@@ -64,6 +64,7 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('cashier/sale',         function () { return redirect()->route('payment.index'); });
     Route::post('cashier/card-lookup', [CashierController::class, 'cardLookup'])->name('cashier.card-lookup');
     Route::get('cashier/history',      [CashierController::class, 'history'])->name('cashier.history');
+    Route::get('cashier/order/{orderNumber}', [CashierController::class, 'orderDetail'])->name('cashier.order-detail');
 
     Route::view('settings', 'settings')->name('settings');
 

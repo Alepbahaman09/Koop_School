@@ -276,6 +276,46 @@ class CashierController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────
+    // GET /cashier/order/{orderNumber}
+    // Returns full detail (items, payment) for a single POS order.
+    // ─────────────────────────────────────────────────────────
+    public function orderDetail(string $orderNumber): JsonResponse
+    {
+        $order = Order::where('order_number', $orderNumber)
+            ->with([
+                'orderItems.product',
+                'terminalPayments' => fn ($q) => $q->where('status', 'Completed')->latest()->limit(1),
+            ])
+            ->first();
+
+        if (! $order) {
+            return response()->json(['success' => false, 'message' => 'Order not found.'], 404);
+        }
+
+        $payment = $order->terminalPayments->first();
+
+        $items = $order->orderItems->map(fn ($item) => [
+            'name'       => $item->product->name ?? '—',
+            'qty'        => $item->quantity,
+            'unit_price' => (float) $item->unit_price,
+            'subtotal'   => (float) $item->subtotal,
+        ]);
+
+        return response()->json([
+            'success'        => true,
+            'order_number'   => $order->order_number,
+            'date'           => $order->created_at->timezone(config('app.timezone'))->format('d M Y, h:i A'),
+            'total'          => (float) $order->total_amount,
+            'payment_method' => $payment?->payment_method ?? '—',
+            'status'         => $order->payment_status === 'Paid' ? 'Paid' : 'Pending',
+            'notes'          => $payment?->notes ?? '',
+            'items'          => $items,
+        ]);
+    }
+
+
+
+    // ─────────────────────────────────────────────────────────
     // Helpers
     // ─────────────────────────────────────────────────────────
     private function generateOrderNumber(): string
