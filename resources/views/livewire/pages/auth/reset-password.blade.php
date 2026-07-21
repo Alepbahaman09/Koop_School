@@ -2,6 +2,7 @@
 
 use App\Models\Admin;
 use App\Services\SupabaseAuth;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 use Livewire\Attributes\Layout;
@@ -45,6 +46,12 @@ new #[Layout('layouts.guest')] class extends Component
                 'password' => $this->password,
                 'remember_token' => Str::random(60),
             ])->save();
+
+            // Do not let a stale authenticated session redirect the browser
+            // away from the login page after the password has changed.
+            Auth::guard('web')->logout();
+            session()->invalidate();
+            session()->regenerateToken();
         } catch (Throwable $error) {
             report($error);
             $this->addError('accessToken', __($error->getMessage()));

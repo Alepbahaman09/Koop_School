@@ -42,6 +42,10 @@ return [
         'ca_bundle' => env('FIREBASE_CA_BUNDLE', storage_path('app/certs/cacert.pem')),
     ],
 
+    'nfc_reader' => [
+        'url' => env('NFC_READER_URL'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

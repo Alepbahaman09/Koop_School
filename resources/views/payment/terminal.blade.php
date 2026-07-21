@@ -463,6 +463,7 @@
                         </div>
                         <div class="text-sm font-bold text-blue-700">Tap NFC Card to Continue</div>
                         <div class="text-xs text-blue-400 mt-1">Ask student to tap their NFC card on the reader</div>
+                        <div class="text-xs text-slate-400 mt-2" id="nfc-reader-status">Connecting to NFC reader...</div>
                     </div>
                 </div>
 
@@ -957,6 +958,11 @@ function selectPayMethod(el) {
         const p = document.getElementById(`panel-${m}`);
         if (p) p.style.display = m === payMethod ? 'block' : 'none';
     });
+
+    if (payMethod === 'NFC Card') {
+        document.getElementById('nfc-wedge-input')?.focus();
+    }
+
     updateCheckoutBtn();
 }
 
@@ -997,6 +1003,59 @@ function updateCheckoutBtn() {
 // ─────────────────────────────────────────────
 let scannedCardUid = null;
 
+let lastNfcEvent = 0;
+let nfcPollTimer = null;
+let nfcLookupNumber = 0;
+const nfcReaderUrl = @json(config('services.nfc_reader.url'));
+
+function setReaderStatus(message, isConnected = false) {
+    const status = document.getElementById('nfc-reader-status');
+    if (!status) return;
+
+    status.textContent = message;
+    status.className = isConnected
+        ? 'text-xs text-emerald-600 font-semibold mt-2'
+        : 'text-xs text-slate-400 mt-2';
+}
+
+function scheduleNfcPoll(delay) {
+    clearTimeout(nfcPollTimer);
+    nfcPollTimer = setTimeout(pollNfcReader, delay);
+}
+
+async function pollNfcReader() {
+    if (!nfcReaderUrl) {
+        setReaderStatus('Python reader is not configured. Keyboard reader is available.');
+        return;
+    }
+
+    try {
+        const url = `${nfcReaderUrl.replace(/\/$/, '')}/card?after=${lastNfcEvent}`;
+        const response = await fetch(url, {
+            headers: { 'Accept': 'application/json' },
+            cache: 'no-store',
+        });
+
+        if (!response.ok) {
+            throw new Error(`Reader returned ${response.status}`);
+        }
+
+        const event = await response.json();
+        lastNfcEvent = Number(event.sequence) || lastNfcEvent;
+        setReaderStatus('NFC reader connected', true);
+
+        if (event.card_uid && payMethod === 'NFC Card' && !scannedCardUid) {
+            processNfcScan(event.card_uid);
+        }
+
+        scheduleNfcPoll(500);
+    } catch (error) {
+        setReaderStatus('Python reader is offline. Keyboard reader is still available.');
+        scheduleNfcPoll(2000);
+    }
+}
+
+// Keyboard-wedge readers can enter the UID without the Python bridge.
 document.addEventListener('keydown', e => {
     if (payMethod !== 'NFC Card') return;
     const inp = document.getElementById('nfc-wedge-input');
@@ -1010,6 +1069,10 @@ document.addEventListener('keydown', e => {
 
 
 function processNfcScan(uid) {
+    uid = String(uid).trim();
+    if (!uid) return;
+
+    const lookupNumber = ++nfcLookupNumber;
     scannedCardUid = null;
     document.getElementById('nfc-waiting-state').style.display = 'none';
     document.getElementById('nfc-scanned-state').style.display = 'none';
@@ -1026,6 +1089,8 @@ function processNfcScan(uid) {
     })
     .then(r => r.json())
     .then(d => {
+        if (lookupNumber !== nfcLookupNumber) return;
+
         if (d.success) {
             scannedCardUid = uid;
             document.getElementById('nfc-card-owner').textContent   = d.owner;
@@ -1038,12 +1103,15 @@ function processNfcScan(uid) {
         }
     })
     .catch(() => {
+        if (lookupNumber !== nfcLookupNumber) return;
+
         document.getElementById('nfc-error-msg').textContent = 'Connection error. Please retry.';
         document.getElementById('nfc-error-state').style.display = 'block';
     });
 }
 
 function resetNfcScan() {
+    nfcLookupNumber++;
     scannedCardUid = null;
     document.getElementById('nfc-waiting-state').style.display = 'block';
     document.getElementById('nfc-scanned-state').style.display = 'none';
@@ -1383,6 +1451,7 @@ function _restorePopoutBtn(btn, label, icon) {
 // ─────────────────────────────────────────────
 // INIT
 // ─────────────────────────────────────────────
+pollNfcReader();
 renderProducts();
 renderCart();
 </script>

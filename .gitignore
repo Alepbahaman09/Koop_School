@@ -14,6 +14,8 @@
 /.zed
 /auth.json
 /node_modules
+/nfc_reader/.env
+/nfc_reader/.venv
 /public/storage
 /storage/*.key
 /storage/app/firebase-service-account.json

@@ -39,7 +39,7 @@
             </div>
         @else
             <div class="my-auto text-center py-12">
-                <span class="text-5xl block mb-4">🎉</span>
+                <span class="text-5xl block mb-4"></span>
                 <p class="text-lg font-bold text-slate-700">All caught up!</p>
                 <p class="text-sm text-slate-400 mt-1">There are no unpaid orders in the database right now.</p>
                 <a href="{{ route('orders.index') }}" class="mt-6 inline-flex h-10 items-center justify-center rounded-lg bg-indigo-600 px-5 text-xs font-extrabold text-white hover:bg-indigo-700 transition-colors">

@@ -12,11 +12,12 @@ Route::middleware('guest')->group(function () {
 
     Volt::route('forgot-password', 'pages.auth.forgot-password')
         ->name('password.request');
-
-    Volt::route('reset-password', 'pages.auth.reset-password')
-        ->name('password.reset');
-
 });
+
+// A recovery link must remain usable when this browser still has an old or
+// unverified admin session. The Supabase access token protects the reset.
+Volt::route('reset-password', 'pages.auth.reset-password')
+    ->name('password.reset');
 
 Route::get('verify-email/{id}/{hash}', VerifyEmailController::class)
     ->middleware(['signed', 'throttle:6,1'])
