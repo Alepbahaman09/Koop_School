@@ -14,6 +14,7 @@
             Log in
         </a>
 
+        {{-- Admin self-registration is intentionally disabled.
         @if (Route::has('register'))
             <a
                 href="{{ route('register') }}"
@@ -22,5 +23,6 @@
                 Register
             </a>
         @endif
+        --}}
     @endauth
 </nav>

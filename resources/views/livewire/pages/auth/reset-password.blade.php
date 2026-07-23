@@ -44,6 +44,7 @@ new #[Layout('layouts.guest')] class extends Component
             $admin->forceFill([
                 'auth_user_id' => $authUserId,
                 'password' => $this->password,
+                'email_verified_at' => $admin->email_verified_at ?? now(),
                 'remember_token' => Str::random(60),
             ])->save();
 

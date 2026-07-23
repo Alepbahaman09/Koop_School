@@ -1,3 +1,8 @@
+{{--
+Admin self-registration is intentionally disabled. Admin accounts must be
+provisioned by an authorized operator. The former page is preserved below as
+commented code in case a controlled registration flow is introduced later.
+
 <?php
 
 use App\Models\User;
@@ -86,3 +91,4 @@ new #[Layout('layouts.guest')] class extends Component
         </div>
     </form>
 </div>
+--}}

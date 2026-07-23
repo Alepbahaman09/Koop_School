@@ -25,6 +25,13 @@
         ['label' => 'Finance', 'route' => 'finance', 'icon' => 'M12 6v12m4-8c0-2.2-1.8-4-4-4s-4 1.2-4 3 1.8 3 4 3 4 1.2 4 3-1.8 3-4 3-4-1.8-4-4'],
         ['label' => 'Settings', 'route' => 'settings', 'icon' => 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8-3a8 8 0 0 0-.11-1.32l2.03-1.58-2-3.46-2.39.96a8.15 8.15 0 0 0-2.28-1.32L15 2h-4l-.36 3.28A8.15 8.15 0 0 0 8.36 6.6l-2.39-.96-2 3.46 2.03 1.58A8 8 0 0 0 6 12c0 .45.04.89.11 1.32l-2.03 1.58 2 3.46 2.39-.96a8.15 8.15 0 0 0 2.28 1.32L11 22h4l.36-3.28a8.15 8.15 0 0 0 2.28-1.32l2.39.96 2-3.46-2.03-1.58c.07-.43.11-.87.11-1.32Z'],
     ];
+
+    $navSections = [
+        'Overview & Sales' => array_slice($navItems, 0, 3),
+        'Catalog' => array_slice($navItems, 3, 2),
+        'Inventory' => $inventoryItems,
+        'Management' => array_merge(array_slice($navItems, 5), $toolItems),
+    ];
 @endphp
 
 <!DOCTYPE html>
@@ -36,115 +43,71 @@
 
         <title>{{ config('app.name', 'Koop School') }} - @yield('title', 'Dashboard')</title>
 
+        <link id="site-favicon" rel="icon" type="image/png" sizes="64x64" href="/koopik-favicon-v5.png">
+        <script>
+            (() => {
+                const favicon = document.getElementById('site-favicon');
+                favicon.href = `/koopik-favicon-v5.png?refresh=${Date.now()}`;
+            })();
+        </script>
+
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700,800&display=swap" rel="stylesheet" />
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="font-sans antialiased text-slate-900">
+    <body class="h-screen overflow-hidden font-sans antialiased text-slate-900">
         @include('partials.admin-alerts')
-        <div class="min-h-screen bg-[#f4f7fb] lg:flex">
-            <aside class="hidden w-64 shrink-0 border-r border-slate-200 bg-white lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col">
-                <div class="flex h-20 items-center gap-3 px-7">
-                    <div class="grid h-10 w-10 place-items-center rounded-lg bg-indigo-600 text-white shadow-lg shadow-indigo-200">
-                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M4 5h16v14H4zM8 9h8M8 13h5" />
-                        </svg>
+        <div class="h-screen overflow-hidden bg-[#f4f7fb] lg:flex">
+            <aside class="hidden w-64 shrink-0 overflow-hidden border-r border-slate-200 bg-white lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:h-screen lg:flex-col">
+                <div class="flex h-16 shrink-0 items-center gap-3 px-6">
+                    <div class="grid h-10 w-10 shrink-0 place-items-center overflow-hidden" aria-hidden="true">
+                        <img src="/images/koopik-logo.png" alt="" class="h-10 w-10 object-contain" style="transform: scale(2.4)">
                     </div>
-                    <span class="text-lg font-extrabold">KoopAll</span>
+                    <span class="text-lg font-extrabold">KooPik</span>
                 </div>
 
-                <nav class="flex-1 space-y-8 px-4 pb-6">
-                    <div>
-                        <p class="mb-3 px-3 text-xs font-bold uppercase text-slate-400">Menu</p>
-                        <div class="space-y-1">
-                            @foreach ($navItems as $item)
-                                <a href="{{ isset($item['route']) ? route($item['route']) : '#' }}" class="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-semibold {{ isset($item['route']) && request()->routeIs($item['route']) ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900' }}">
-                                    <span class="flex items-center gap-3">
-                                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="{{ $item['icon'] }}" />
-                                        </svg>
-                                        {{ $item['label'] }}
-                                    </span>
-                                    @isset($item['badge'])
-                                        <span class="grid h-5 min-w-5 place-items-center rounded-full bg-indigo-600 px-1.5 text-xs text-white">{{ $item['badge'] }}</span>
-                                    @endisset
-                                </a>
-                            @endforeach
+                <nav class="min-h-0 flex-1 space-y-4 overflow-hidden px-4 py-3" aria-label="Main navigation">
+                    @foreach ($navSections as $section => $items)
+                        <div>
+                            <p class="mb-2 px-3 text-xs font-bold uppercase text-slate-400">{{ $section }}</p>
+                            <div class="space-y-1">
+                                @foreach ($items as $item)
+                                    @php($activeRoute = preg_replace('/\.index$/', '.*', $item['route']))
+                                    <a href="{{ route($item['route']) }}" class="flex items-center justify-between rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors {{ request()->routeIs($item['route'], $activeRoute) ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900' }}">
+                                        <span class="flex items-center gap-3">
+                                            <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                <path d="{{ $item['icon'] }}" />
+                                            </svg>
+                                            {{ $item['label'] }}
+                                        </span>
+                                    </a>
+                                @endforeach
+                            </div>
                         </div>
-                    </div>
+                    @endforeach
+                </nav>
 
-                    <div>
-                        <p class="mb-3 px-3 text-xs font-bold uppercase text-slate-400">Inventory</p>
-                        <div class="space-y-1">
-                            @foreach ($inventoryItems as $item)
-                                <a href="{{ isset($item['route']) ? route($item['route']) : '#' }}" class="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-semibold {{ isset($item['route']) && request()->routeIs($item['route']) ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900' }}">
-                                    <span class="flex items-center gap-3">
-                                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="{{ $item['icon'] }}" />
-                                        </svg>
-                                        {{ $item['label'] }}
-                                    </span>
-                                    @isset($item['badge'])
-                                        <span class="grid h-5 min-w-5 place-items-center rounded-full bg-indigo-600 px-1.5 text-xs text-white">{{ $item['badge'] }}</span>
-                                    @endisset
-                                </a>
-                            @endforeach
-                        </div>
-                    </div>
-
-                    <div>
-                        <p class="mb-3 px-3 text-xs font-bold uppercase text-slate-400">Tools</p>
-                        <div class="space-y-1">
-                            @foreach ($toolItems as $item)
-                                <a href="{{ isset($item['route']) ? route($item['route']) : '#' }}" class="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-semibold {{ isset($item['route']) && request()->routeIs($item['route']) ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900' }}">
-                                    <span class="flex items-center gap-3">
-                                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="{{ $item['icon'] }}" />
-                                        </svg>
-                                        {{ $item['label'] }}
-                                    </span>
-                                    @isset($item['badge'])
-                                        <span class="grid h-5 min-w-5 place-items-center rounded-full bg-indigo-600 px-1.5 text-xs text-white">{{ $item['badge'] }}</span>
-                                    @endisset
-                                </a>
-                            @endforeach
-                        </div>
-                    </div>
-
+                <div class="shrink-0 space-y-2 border-t border-slate-100 bg-white p-3">
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
-                        <button type="submit" class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-rose-500 hover:bg-rose-50">
-                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <button type="submit" class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold text-rose-500 transition-colors hover:bg-rose-50">
+                            <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3" />
                             </svg>
                             Log out
                         </button>
                     </form>
-                </nav>
-
-                <div class="border-t border-slate-100 p-4">
-                    <a href="{{ route('settings') }}" class="flex items-center gap-3 rounded-lg p-3 hover:bg-slate-50">
-                        <div class="grid h-10 w-10 place-items-center rounded-lg bg-indigo-600 text-sm font-bold text-white">
-                            {{ strtoupper(substr(auth()->user()->name ?? 'A', 0, 1)) }}
-                        </div>
-                        <div class="min-w-0">
-                            <p class="truncate text-sm font-bold">{{ auth()->user()->name }}</p>
-                            <p class="truncate text-xs text-slate-400">{{ auth()->user()->email }}</p>
-                        </div>
-                    </a>
                 </div>
             </aside>
 
-            <main class="min-w-0 flex-1">
+            <main class="h-screen min-w-0 flex-1 overflow-y-auto lg:ml-64">
                 <header class="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
                     <div class="flex h-20 items-center gap-4 px-4 sm:px-6 lg:px-8">
                         <div class="flex items-center gap-3 lg:hidden">
-                            <div class="grid h-10 w-10 place-items-center rounded-lg bg-indigo-600 text-white">
-                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M4 5h16v14H4zM8 9h8M8 13h5" />
-                                </svg>
+                            <div class="grid h-10 w-10 shrink-0 place-items-center overflow-hidden" aria-hidden="true">
+                                <img src="/images/koopik-logo.png" alt="" class="h-10 w-10 object-contain" style="transform: scale(2.4)">
                             </div>
-                            <span class="font-extrabold">KoopAll</span>
+                            <span class="font-extrabold">KooPik</span>
                         </div>
 
                         <div class="hidden items-center gap-2 text-sm font-semibold text-slate-400 sm:flex">
