@@ -80,10 +80,7 @@
             <thead>
                 <tr class="border-b border-slate-100 text-xs font-bold uppercase text-slate-400">
                     <th class="px-5 py-4">Company Name</th>
-                    <th class="px-5 py-4">Contact Person</th>
                     <th class="px-5 py-4">Contact Details</th>
-                    <th class="px-5 py-4">Notes</th>
-                    <th class="px-5 py-4">Status</th>
                     <th class="px-5 py-4 text-right">Actions</th>
                 </tr>
             </thead>
@@ -102,30 +99,11 @@
                                 </div>
                             </div>
                         </td>
-                        {{-- Contact Person --}}
-                        <td class="px-5 py-4">
-                            <p class="font-semibold text-slate-700">{{ $supplier->contact_person ?: '—' }}</p>
-                        </td>
                         {{-- Contact Details --}}
                         <td class="px-5 py-4">
+                            <p class="font-semibold text-slate-700">{{ $supplier->contact_name ?: '—' }}</p>
                             <p class="font-semibold text-slate-700">{{ $supplier->email ?: '—' }}</p>
                             <p class="text-[11px] font-semibold text-slate-400">{{ $supplier->phone ?: '—' }}</p>
-                        </td>
-                        {{-- Notes --}}
-                        <td class="px-5 py-4">
-                            <p class="text-xs font-semibold text-slate-500 truncate max-w-xs" title="{{ $supplier->notes }}">{{ $supplier->notes ?: '—' }}</p>
-                        </td>
-                        {{-- Status --}}
-                        <td class="px-5 py-4">
-                            @if ($supplier->status === 'active')
-                                <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-600 ring-1 ring-emerald-100">
-                                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span> Active
-                                </span>
-                            @else
-                                <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500 ring-1 ring-slate-200">
-                                    <span class="h-1.5 w-1.5 rounded-full bg-slate-400"></span> Inactive
-                                </span>
-                            @endif
                         </td>
                         {{-- Actions --}}
                         <td class="px-5 py-4">

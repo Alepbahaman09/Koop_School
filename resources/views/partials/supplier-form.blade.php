@@ -41,19 +41,6 @@
     @error('address') <p class="text-xs text-rose-500">{{ $message }}</p> @enderror
 </div>
 
-<div class="space-y-1 sm:col-span-2">
-    <label class="text-xs font-bold text-slate-600">Notes</label>
-    <textarea name="notes" rows="2"
-        class="w-full rounded-lg border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 focus:border-indigo-400 focus:ring-indigo-200"
-        placeholder="Internal notes/terms">{{ old('notes', $s?->notes) }}</textarea>
-    @error('notes') <p class="text-xs text-rose-500">{{ $message }}</p> @enderror
-</div>
 
-<div class="space-y-1 sm:col-span-2">
-    <label class="text-xs font-bold text-slate-600">Status</label>
-    <select name="status" class="h-10 w-full rounded-lg border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-800 focus:border-indigo-400 focus:ring-indigo-200">
-        <option value="active" {{ old('status', $s?->status ?? 'active') === 'active' ? 'selected' : '' }}>Active</option>
-        <option value="inactive" {{ old('status', $s?->status) === 'inactive' ? 'selected' : '' }}>Inactive</option>
-    </select>
-    @error('status') <p class="text-xs text-rose-500">{{ $message }}</p> @enderror
-</div>
+
+

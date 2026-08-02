@@ -18,19 +18,9 @@ class SupplierController extends Controller
             $query->where('company_name', 'like', "%{$search}%");
         }
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->input('status'));
-        }
-
         $suppliers = $query->latest()->paginate(15)->withQueryString();
 
-        $stats = [
-            'total'    => Supplier::count(),
-            'active'   => Supplier::where('status', 'active')->count(),
-            'inactive' => Supplier::where('status', 'inactive')->count(),
-        ];
-
-        return view('suppliers', compact('suppliers', 'stats'));
+        return view('suppliers', compact('suppliers'));
     }
 
     /**
@@ -39,13 +29,11 @@ class SupplierController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'company_name'   => 'required|string|max:255',
-            'contact_person' => 'nullable|string|max:255',
-            'email'          => 'nullable|email|max:255',
-            'phone'          => 'nullable|string|max:50',
-            'address'        => 'nullable|string|max:1000',
-            'notes'          => 'nullable|string|max:1000',
-            'status'         => 'required|in:active,inactive',
+            'company_name' => 'required|string|max:255',
+            'contact_name' => 'nullable|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'phone' => 'nullable|string|max:50',
+            'address' => 'nullable|string|max:1000',
         ]);
 
         Supplier::create($validated);
@@ -60,13 +48,12 @@ class SupplierController extends Controller
     public function update(Request $request, Supplier $supplier)
     {
         $validated = $request->validate([
-            'company_name'   => 'required|string|max:255',
-            'contact_person' => 'nullable|string|max:255',
-            'email'          => 'nullable|email|max:255',
-            'phone'          => 'nullable|string|max:50',
-            'address'        => 'nullable|string|max:1000',
-            'notes'          => 'nullable|string|max:1000',
-            'status'         => 'required|in:active,inactive',
+            'company_name' => 'required|string|max:255',
+            'contact_name' => 'nullable|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'phone' => 'nullable|string|max:50',
+            'address' => 'nullable|string|max:1000',
+
         ]);
 
         $supplier->update($validated);
@@ -80,9 +67,9 @@ class SupplierController extends Controller
      */
     public function destroy(Supplier $supplier)
     {
-        $supplier->update(['status' => 'inactive']);
+        $supplier->delete();
 
         return redirect()->route('suppliers.index')
-            ->with('success', 'Supplier status changed to inactive.');
+            ->with('success', 'Supplier deleted successfully.');
     }
 }
