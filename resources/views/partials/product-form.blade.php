@@ -19,6 +19,14 @@
         @endforeach
     </select>
 </label>
+<label class="text-xs font-extrabold uppercase text-slate-400">Supplier
+    <select name="supplier_id" class="mt-1 h-10 w-full rounded-lg border-slate-200 text-sm">
+        <option value="">No Supplier</option>
+        @foreach ($suppliers as $supplier)
+            <option value="{{ $supplier->id }}" @selected(old('supplier_id', $product?->supplier_id) == $supplier->id)>{{ $supplier->company_name }}</option>
+        @endforeach
+    </select>
+</label>
 <label class="text-xs font-extrabold uppercase text-slate-400">Price (RM)
     <input name="price" type="number" required min="0" step="0.01" value="{{ old('price', $product?->price) }}" class="mt-1 h-10 w-full rounded-lg border-slate-200 text-sm">
 </label>

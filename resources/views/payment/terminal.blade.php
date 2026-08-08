@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Cashier Terminal – {{ config('app.name', 'Koop School') }}</title>
+    <title>POS – {{ config('app.name', 'Koop School') }}</title>
 
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700,800,900&display=swap" rel="stylesheet">
@@ -253,7 +253,7 @@
         <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white font-black text-sm shrink-0"
              style="background: linear-gradient(135deg,#2563eb,#1d4ed8); box-shadow:0 4px 12px rgba(37,99,235,.35);">K</div>
         <div>
-            <div class="font-black text-slate-800 text-sm leading-tight">Cashier Terminal</div>
+            <div class="font-black text-slate-800 text-sm leading-tight">POS</div>
             <div class="text-xs font-semibold text-slate-400 leading-tight">Koop School POS</div>
         </div>
     </div>
@@ -290,7 +290,7 @@
 
         {{-- Close / Exit button --}}
         <a href="{{ route('orders.index') }}"
-           title="Exit Cashier Terminal"
+           title="Exit POS"
            style="display:flex; align-items:center; justify-content:center;
                   width:36px; height:36px; border-radius:10px;
                   background:#fee2e2; border:1.5px solid #fca5a5; color:#dc2626;
@@ -310,7 +310,7 @@
 </header>
 
 {{-- Docked-window notice (only visible when running as a pop-out) --}}
-<div id="docked-banner">📺 Running on external display — Cashier Terminal</div>
+<div id="docked-banner">📺 Running on external display — POS</div>
 
 {{-- ══════════ MAIN POS GRID ══════════ --}}
 <main class="pos-grid">

@@ -44,7 +44,7 @@ class HomeBannerController extends Controller
 
         HomeBanner::create($validated);
 
-        return back()->with('success', 'Home banner created successfully.');
+        return back()->with('success', 'Announcement created successfully.');
     }
 
     public function update(Request $request, HomeBanner $homeBanner)
@@ -67,7 +67,7 @@ class HomeBannerController extends Controller
             $this->storage->deletePublicFile($oldImage, HomeBanner::IMAGE_BUCKET);
         }
 
-        return back()->with('success', 'Home banner updated successfully.');
+        return back()->with('success', 'Announcement updated successfully.');
     }
 
     public function destroy(HomeBanner $homeBanner)
@@ -75,7 +75,7 @@ class HomeBannerController extends Controller
         $this->storage->deletePublicFile($homeBanner->image_url, HomeBanner::IMAGE_BUCKET);
         $homeBanner->delete();
 
-        return back()->with('success', 'Home banner deleted successfully.');
+        return back()->with('success', 'Announcement deleted successfully.');
     }
 
     private function validatedData(Request $request, bool $imageRequired = true): array

@@ -93,7 +93,7 @@
                 </div>
                 <div class="p-4">
                     <p class="truncate text-sm font-extrabold text-slate-900">{{ $product->name }}</p>
-                    <p class="mt-0.5 truncate text-[11px] font-semibold text-slate-400">{{ $product->category?->name ?? 'Uncategorised' }} / {{ $product->sku }}</p>
+                    <p class="mt-0.5 truncate text-[11px] font-semibold text-slate-400">{{ $product->category?->name ?? 'Uncategorised' }} / {{ $product->sku }} @if($product->supplier) / {{ $product->supplier->company_name }} @endif</p>
                     @if ($product->sizes->isNotEmpty())
                         <div class="mt-2 flex flex-wrap gap-1">
                             @foreach ($product->sizes as $productSize)

@@ -1,12 +1,12 @@
 @extends('layouts.app')
 
-@section('title', 'Analytics')
-@section('page-title', 'Analytics')
+@section('title', 'Financial Report')
+@section('page-title', 'Financial Report')
 
 @section('content')
 <section class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <div>
-        <h1 class="text-xl font-extrabold text-slate-950">Analytics</h1>
+        <h1 class="text-xl font-extrabold text-slate-950">Financial Report</h1>
         <p class="mt-1 text-xs font-semibold text-slate-400">{{ $start->format('d M Y') }} - {{ $end->format('d M Y') }}</p>
     </div>
     <div class="flex gap-2">
@@ -17,17 +17,16 @@
                 @endforeach
             </select>
         </form>
-        <a href="{{ route('analytics.export', ['days' => $days]) }}" class="inline-flex h-10 items-center rounded-lg bg-white px-4 text-sm font-extrabold text-slate-700 shadow-sm ring-1 ring-slate-100 hover:text-indigo-600">Export Report</a>
+        <a href="{{ route('financial-report.export', ['days' => $days]) }}" class="inline-flex h-10 items-center rounded-lg bg-white px-4 text-sm font-extrabold text-slate-700 shadow-sm ring-1 ring-slate-100 hover:text-indigo-600">Export Report</a>
     </div>
 </section>
 
-<section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+<section class="grid gap-4 sm:grid-cols-3">
     @php
         $metricIcons = [
-            'indigo' => ['bg-indigo-50 text-indigo-600', 'M4 19V5m5 14V9m5 10V3m5 16v-7'],
-            'sky' => ['bg-sky-50 text-sky-600', 'M6 6h15l-1.5 9h-12L6 6Zm0 0L5 3H2m7 18h.01m9 0h.01'],
-            'amber' => ['bg-amber-50 text-amber-600', 'M12 3v18m5-14H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H7'],
-            'emerald' => ['bg-emerald-50 text-emerald-600', 'M5 12l4 4L19 6'],
+            'indigo' => ['bg-indigo-50 text-indigo-600', 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'],
+            'rose' => ['bg-rose-50 text-rose-600', 'M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z'],
+            'emerald' => ['bg-emerald-50 text-emerald-600', 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6'],
         ];
     @endphp
     @foreach ($metrics as $metric)
@@ -38,10 +37,10 @@
                     <p class="mt-2 text-2xl font-extrabold text-slate-950">{{ $metric['value'] }}</p>
                 </div>
                 <span class="grid h-9 w-9 place-items-center rounded-lg {{ $metricIcons[$metric['tone']][0] }}">
-                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="{{ $metricIcons[$metric['tone']][1] }}" /></svg>
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="{{ $metricIcons[$metric['tone']][1] }}" /></svg>
                 </span>
             </div>
-            <p class="mt-2 text-xs font-extrabold {{ $metric['change']['positive'] ? 'text-emerald-500' : 'text-rose-500' }}">
+            <p class="mt-2 text-xs font-extrabold {{ $metric['change']['positive'] ? ($metric['tone'] === 'rose' ? 'text-rose-500' : 'text-emerald-500') : ($metric['tone'] === 'rose' ? 'text-emerald-500' : 'text-rose-500') }}">
                 {{ $metric['change']['positive'] ? '+' : '' }}{{ number_format($metric['change']['value'], 1) }}% vs previous period
             </p>
         </article>
@@ -52,12 +51,12 @@
     <article class="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
         <div class="mb-5 flex items-start justify-between">
             <div>
-                <h2 class="text-sm font-extrabold text-slate-950">Revenue & Orders</h2>
+                <h2 class="text-sm font-extrabold text-slate-950">Revenue vs Expenses</h2>
                 <p class="mt-1 text-xs font-semibold text-slate-400">Performance for the selected period</p>
             </div>
             <div class="flex gap-3 text-[11px] font-bold text-slate-500">
                 <span class="flex items-center gap-1.5"><i class="h-2 w-2 rounded-sm bg-indigo-500"></i> Revenue</span>
-                <span class="flex items-center gap-1.5"><i class="h-2 w-2 rounded-sm bg-rose-400"></i> Orders</span>
+                <span class="flex items-center gap-1.5"><i class="h-2 w-2 rounded-sm bg-rose-500"></i> Expenses</span>
             </div>
         </div>
         <div class="h-72"><canvas id="revenueChart"></canvas></div>
@@ -124,11 +123,55 @@
         data: {
             labels: @json($salesTrend->pluck('label')),
             datasets: [
-                { label: 'Revenue', data: @json($salesTrend->pluck('revenue')), borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,.10)', fill: true, tension: .4, pointRadius: 2, borderWidth: 2 },
-                { label: 'Orders', data: @json($salesTrend->pluck('orders')), borderColor: '#fb7185', backgroundColor: 'transparent', tension: .4, pointRadius: 2, borderWidth: 2, yAxisID: 'orders' }
+                { 
+                    label: 'Revenue', 
+                    data: @json($salesTrend->pluck('revenue')), 
+                    borderColor: '#6366f1', 
+                    backgroundColor: 'rgba(99,102,241,.10)', 
+                    fill: true, 
+                    tension: .4, 
+                    pointRadius: 2, 
+                    borderWidth: 2 
+                },
+                { 
+                    label: 'Expenses', 
+                    data: @json($salesTrend->pluck('expenses')), 
+                    borderColor: '#f43f5e', 
+                    backgroundColor: 'rgba(244,63,94,.10)', 
+                    fill: true, 
+                    tension: .4, 
+                    pointRadius: 2, 
+                    borderWidth: 2 
+                }
             ]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 10 } }, y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, orders: { beginAtZero: true, position: 'right', grid: { display: false } } } }
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false, 
+            plugins: { 
+                legend: { 
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        boxWidth: 12,
+                        font: {
+                            weight: 'bold',
+                            size: 11
+                        }
+                    }
+                } 
+            }, 
+            scales: { 
+                x: { 
+                    grid: { display: false }, 
+                    ticks: { maxTicksLimit: 10 } 
+                }, 
+                y: { 
+                    beginAtZero: true, 
+                    grid: { color: '#f1f5f9' } 
+                } 
+            } 
+        }
     });
 
     new Chart(document.getElementById('categoryChart'), {

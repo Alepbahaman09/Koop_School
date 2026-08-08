@@ -42,7 +42,7 @@ class PurchaseOrderController extends Controller
      */
     public function create()
     {
-        $suppliers = Supplier::where('status', 'active')->orderBy('company_name')->get();
+        $suppliers = Supplier::orderBy('company_name')->get();
         $products  = Product::orderBy('name')->get();
 
         // Auto-generate PO number

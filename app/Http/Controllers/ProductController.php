@@ -22,8 +22,8 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         $query = Product::query()
-            ->select(['id', 'category_id', 'sku', 'name', 'description', 'price', 'stock_quantity', 'min_stock_level', 'image', 'created_at'])
-            ->with(['category:id,name', 'sizes:id,product_id,size,stock_quantity']);
+            ->select(['id', 'category_id', 'supplier_id', 'sku', 'name', 'description', 'price', 'stock_quantity', 'min_stock_level', 'image', 'created_at'])
+            ->with(['category:id,name', 'sizes:id,product_id,size,stock_quantity', 'supplier:id,company_name']);
 
         if ($request->filled('search')) {
             $search = (string) $request->string('search')->trim();
@@ -79,8 +79,9 @@ class ProductController extends Controller
         ];
 
         $availableSizes = ProductSize::AVAILABLE_SIZES;
+        $suppliers = \App\Models\Supplier::orderBy('company_name')->get(['id', 'company_name']);
 
-        return view('products', compact('products', 'categories', 'allCategories', 'categoryStats', 'stats', 'availableSizes'));
+        return view('products', compact('products', 'categories', 'allCategories', 'categoryStats', 'stats', 'availableSizes', 'suppliers'));
     }
 
     public function create()
@@ -197,6 +198,7 @@ class ProductController extends Controller
     {
         $validated = $request->validate([
             'category_id' => ['required', 'exists:categories,id'],
+            'supplier_id' => ['nullable', 'exists:suppliers,id'],
             'sku' => ['required', 'string', 'max:255', Rule::unique('products', 'sku')->ignore($product)],
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],

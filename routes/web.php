@@ -1,19 +1,18 @@
 <?php
 
-use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\CashierController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\FinanceController;
+use App\Http\Controllers\FinancialReportController;
 use App\Http\Controllers\HomeBannerController;
+use App\Http\Controllers\ManageStockController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OrderController;
-use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\ProductController;
 use App\Http\Controllers\StockPurchaseController;
-use App\Http\Controllers\ManageStockController;
+use App\Http\Controllers\SupplierController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login');
@@ -47,8 +46,10 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('orders/{order}/pay', [PaymentController::class, 'checkout'])->name('orders.pay');
     Route::post('orders/{order}/pay/nfc', [PaymentController::class, 'processNfcPayment'])->name('orders.pay.nfc');
     Route::post('orders/{order}/pay/cash', [PaymentController::class, 'processCashPayment'])->name('orders.pay.cash');
-    Route::get('finance', [FinanceController::class, 'index'])->name('finance');
-    Route::get('finance/export', [FinanceController::class, 'export'])->name('finance.export');
+    Route::get('financial-report', [FinancialReportController::class, 'index'])->name('financial-report');
+    Route::get('financial-report/export', [FinancialReportController::class, 'export'])->name('financial-report.export');
+    Route::redirect('finance', '/financial-report');
+    Route::redirect('finance/export', '/financial-report/export');
 
     Route::resource('suppliers', SupplierController::class)->except(['create', 'edit', 'show']);
     Route::post('stock-purchases/product-inline', [StockPurchaseController::class, 'storeProductInline'])->name('stock-purchases.product-inline');
@@ -60,10 +61,12 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::post('manage-stock', [ManageStockController::class, 'store'])->name('manage-stock.store');
 
     // ── Cashier Terminal (dedicated — separate from app PaymentController) ──
-    Route::post('cashier/sale',        [CashierController::class, 'sale'])->name('cashier.sale');
-    Route::get('cashier/sale',         function () { return redirect()->route('payment.index'); });
+    Route::post('cashier/sale', [CashierController::class, 'sale'])->name('cashier.sale');
+    Route::get('cashier/sale', function () {
+        return redirect()->route('payment.index');
+    });
     Route::post('cashier/card-lookup', [CashierController::class, 'cardLookup'])->name('cashier.card-lookup');
-    Route::get('cashier/history',      [CashierController::class, 'history'])->name('cashier.history');
+    Route::get('cashier/history', [CashierController::class, 'history'])->name('cashier.history');
     Route::get('cashier/order/{orderNumber}', [CashierController::class, 'orderDetail'])->name('cashier.order-detail');
 
     Route::view('settings', 'settings')->name('settings');
@@ -74,11 +77,7 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::patch('notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
 });
 
-Route::get('analytics', [AnalyticsController::class, 'index'])
-    ->middleware(['auth', 'verified', 'admin'])
-    ->name('analytics');
-Route::get('analytics/export', [AnalyticsController::class, 'export'])
-    ->middleware(['auth', 'verified', 'admin'])
-    ->name('analytics.export');
+Route::redirect('analytics', '/financial-report')->middleware(['auth', 'verified', 'admin'])->name('analytics');
+Route::redirect('analytics/export', '/financial-report/export')->middleware(['auth', 'verified', 'admin'])->name('analytics.export');
 
 require __DIR__.'/auth.php';

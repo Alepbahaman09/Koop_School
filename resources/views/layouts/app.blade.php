@@ -7,10 +7,10 @@
     $latestNotificationId = (int) $notificationState->latest_id;
     $navItems = [
         ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'M3 13h8V3H3v10Zm10 8h8V3h-8v18ZM3 21h8v-6H3v6Z'],
-        ['label' => 'Cashier Terminal', 'route' => 'payment.index', 'icon' => 'M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3H3V5Zm0 4h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Zm4 4h6M7 16h3'],
+        ['label' => 'POS', 'route' => 'payment.index', 'icon' => 'M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3H3V5Zm0 4h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Zm4 4h6M7 16h3'],
         ['label' => 'Orders', 'route' => 'orders.index', 'icon' => 'M6 6h15l-1.5 9h-12L6 6Zm0 0L5 3H2m7 18a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm9 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z'],
         ['label' => 'Products', 'route' => 'products.index', 'icon' => 'M20 7 12 3 4 7l8 4 8-4Zm0 0v10l-8 4m8-14-8 4m0 10-8-4V7m8 14V11'],
-        ['label' => 'Home Banners', 'route' => 'home-banners.index', 'icon' => 'M4 6h16v12H4zM7 9h5M7 13h10'],
+        ['label' => 'Announcements', 'route' => 'home-banners.index', 'icon' => 'M4 6h16v12H4zM7 9h5M7 13h10'],
         ['label' => 'Users', 'route' => 'users.index', 'icon' => 'M17 20h5v-2a4 4 0 0 0-4-4h-1M9 20H4v-2a4 4 0 0 1 4-4h1m8-4a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM9 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z'],
     ];
 
@@ -21,8 +21,7 @@
     ];
 
     $toolItems = [
-        ['label' => 'Analytics', 'route' => 'analytics', 'icon' => 'M4 19V5m5 14V9m5 10V3m5 16v-7'],
-        ['label' => 'Finance', 'route' => 'finance', 'icon' => 'M12 6v12m4-8c0-2.2-1.8-4-4-4s-4 1.2-4 3 1.8 3 4 3 4 1.2 4 3-1.8 3-4 3-4-1.8-4-4'],
+        ['label' => 'Financial Report', 'route' => 'financial-report', 'icon' => 'M4 19V5m5 14V9m5 10V3m5 16v-7'],
         ['label' => 'Settings', 'route' => 'settings', 'icon' => 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8-3a8 8 0 0 0-.11-1.32l2.03-1.58-2-3.46-2.39.96a8.15 8.15 0 0 0-2.28-1.32L15 2h-4l-.36 3.28A8.15 8.15 0 0 0 8.36 6.6l-2.39-.96-2 3.46 2.03 1.58A8 8 0 0 0 6 12c0 .45.04.89.11 1.32l-2.03 1.58 2 3.46 2.39-.96a8.15 8.15 0 0 0 2.28 1.32L11 22h4l.36-3.28a8.15 8.15 0 0 0 2.28-1.32l2.39.96 2-3.46-2.03-1.58c.07-.43.11-.87.11-1.32Z'],
     ];
 

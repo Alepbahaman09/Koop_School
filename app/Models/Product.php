@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Storage;
 
 class Product extends Model
 {
-    protected $fillable = ['category_id', 'sku', 'name', 'description', 'price', 'cost_price', 'unit', 'purchase_unit', 'units_per_carton', 'stock_quantity', 'min_stock_level', 'image'];
+    protected $fillable = ['category_id', 'supplier_id', 'sku', 'name', 'description', 'price', 'cost_price', 'unit', 'purchase_unit', 'units_per_carton', 'stock_quantity', 'min_stock_level', 'image'];
 
     protected function casts(): array
     {
@@ -36,6 +36,11 @@ class Product extends Model
     public function category()
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class);
     }
 
     public function orderItems()

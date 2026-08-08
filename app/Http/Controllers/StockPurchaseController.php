@@ -24,17 +24,10 @@ class StockPurchaseController extends Controller
      */
     public function index(Request $request)
     {
-        $query = StockPurchase::with(['supplier', 'creator']);
-
-        if ($search = $request->input('search')) {
-            $query->whereHas('supplier', function ($q) use ($search) {
-                $q->where('company_name', 'like', "%{$search}%");
-            });
-        }
-
-        $stockPurchases = $query->latest()->paginate(15)->withQueryString();
-
-        return view('stock_purchases.index', compact('stockPurchases'));
+        return redirect()->route('suppliers.index', [
+            'tab' => 'purchases',
+            'search' => $request->input('search'),
+        ]);
     }
 
     /**
@@ -42,7 +35,7 @@ class StockPurchaseController extends Controller
      */
     public function create()
     {
-        $suppliers     = Supplier::where('status', 'active')->orderBy('company_name')->get();
+        $suppliers     = Supplier::orderBy('company_name')->get();
         $products      = Product::orderBy('name')->get();
         $categories    = Category::orderBy('name')->get();
         $purchaseUnits = self::PURCHASE_UNITS;
@@ -110,7 +103,7 @@ class StockPurchaseController extends Controller
             }
         });
 
-        return redirect()->route('stock-purchases.index')
+        return redirect()->route('suppliers.index', ['tab' => 'purchases'])
             ->with('success', 'Stock purchase recorded as pending. Mark as Received in the table to update inventory.');
     }
 

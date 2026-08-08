@@ -1,29 +1,29 @@
 @extends('layouts.app')
 
-@section('title', 'Home Banners')
-@section('page-title', 'Home Banners')
+@section('title', 'Announcements')
+@section('page-title', 'Announcements')
 
 @section('content')
 <section class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <div>
-        <h1 class="text-xl font-extrabold text-slate-950">Home banners</h1>
+        <h1 class="text-xl font-extrabold text-slate-950">Announcements</h1>
         <p class="mt-1 text-xs font-semibold text-slate-400">Create announcements and promotions shown on the mobile app homepage.</p>
     </div>
     <details class="group">
         <summary class="inline-flex h-10 cursor-pointer list-none items-center gap-2 rounded-lg bg-indigo-600 px-4 text-sm font-extrabold text-white shadow-sm hover:bg-indigo-700">
-            <span class="text-lg">+</span> Add Banner
+            <span class="text-lg">+</span> Add Announcement
         </summary>
         <div class="fixed inset-0 z-40 bg-slate-950/30"></div>
         <div class="fixed inset-x-4 top-6 z-50 mx-auto max-h-[90vh] max-w-2xl overflow-y-auto rounded-xl bg-white p-6 shadow-2xl">
             <div class="mb-5 flex items-center justify-between">
-                <h2 class="text-lg font-extrabold">Add homepage banner</h2>
+                <h2 class="text-lg font-extrabold">Add Announcement</h2>
                 <button type="button" onclick="this.closest('details').open=false" class="grid h-8 w-8 place-items-center rounded-lg bg-slate-100 font-extrabold text-slate-500">&times;</button>
             </div>
             <form method="POST" action="{{ route('home-banners.store') }}" enctype="multipart/form-data" class="grid gap-4 sm:grid-cols-2">
                 @csrf
                 @include('partials.home-banner-form', ['banner' => null])
                 <div class="flex justify-end sm:col-span-2">
-                    <button class="h-10 rounded-lg bg-indigo-600 px-5 text-sm font-extrabold text-white">Create Banner</button>
+                    <button class="h-10 rounded-lg bg-indigo-600 px-5 text-sm font-extrabold text-white">Create Announcement</button>
                 </div>
             </form>
         </div>
@@ -68,7 +68,7 @@
                         <div class="fixed inset-0 z-40 bg-slate-950/30"></div>
                         <div class="fixed inset-x-4 top-6 z-50 mx-auto max-h-[90vh] max-w-2xl overflow-y-auto rounded-xl bg-white p-6 shadow-2xl">
                             <div class="mb-5 flex items-center justify-between">
-                                <h2 class="text-lg font-extrabold">Edit {{ $banner->title }}</h2>
+                                <h2 class="text-lg font-extrabold">Edit Announcement: {{ $banner->title }}</h2>
                                 <button type="button" onclick="this.closest('details').open=false" class="grid h-8 w-8 place-items-center rounded-lg bg-slate-100 font-extrabold text-slate-500">&times;</button>
                             </div>
                             <form method="POST" action="{{ route('home-banners.update', $banner) }}" enctype="multipart/form-data" class="grid gap-4 sm:grid-cols-2">
@@ -93,13 +93,13 @@
         </article>
     @empty
         <article class="rounded-xl bg-white p-8 text-center shadow-sm ring-1 ring-slate-100">
-            <p class="text-sm font-extrabold text-slate-700">No banners yet</p>
+            <p class="text-sm font-extrabold text-slate-700">No announcements yet</p>
             <p class="mt-1 text-xs font-semibold text-slate-400">Create one to show an announcement or promotion in the mobile app.</p>
         </article>
     @endforelse
     @if ($banners->isNotEmpty())
         <article data-banner-empty-state class="hidden rounded-xl bg-white p-8 text-center shadow-sm ring-1 ring-slate-100">
-            <p class="text-sm font-extrabold text-slate-700">No banners yet</p>
+            <p class="text-sm font-extrabold text-slate-700">No announcements yet</p>
             <p class="mt-1 text-xs font-semibold text-slate-400">Create one to show an announcement or promotion in the mobile app.</p>
         </article>
     @endif
