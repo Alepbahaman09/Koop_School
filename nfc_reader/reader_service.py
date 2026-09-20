@@ -17,7 +17,7 @@ from time import time
 from urllib.parse import parse_qs, urlparse
 
 from dotenv import load_dotenv
-from smartcard.CardMonitoring import CardMonitor, CardObserver
+from smartcard.Exceptions import CardConnectionException, NoCardException
 from smartcard.System import readers
 
 
@@ -77,60 +77,93 @@ class CardEvents:
             }
 
 
-class NfcReader(CardObserver):
+class NfcReader:
+    """Polls all available PC/SC readers every second for a present card.
+
+    Using a plain polling thread instead of CardMonitor/CardObserver because
+    CardMonitor is unreliable on many Windows PC/SC driver stacks.
+    """
+
+    _POLL_INTERVAL = 1.0  # seconds between reader polls
+
     def __init__(self, events: CardEvents, reader_name: str | None = None) -> None:
         self.events = events
         self.reader_name = reader_name
-        self.monitor = CardMonitor()
+        self._stop_event = threading.Event()
+        self._thread = threading.Thread(target=self._poll_loop, name="nfc-poll", daemon=True)
+        # Track which readers currently have a card so we only fire once per tap
+        self._card_present: set[str] = set()
 
     def start(self) -> None:
-        self.monitor.addObserver(self)
+        self._thread.start()
+        logging.info("NFC polling thread started.")
 
     def stop(self) -> None:
-        self.monitor.deleteObserver(self)
+        self._stop_event.set()
+        self._thread.join(timeout=5)
+        logging.info("NFC polling thread stopped.")
 
     def matching_readers(self) -> list[str]:
-        available = [str(reader) for reader in readers()]
+        available = [str(r) for r in readers()]
         if not self.reader_name:
             return available
-
         wanted = self.reader_name.casefold()
         return [name for name in available if wanted in name.casefold()]
 
-    def update(self, observable, actions) -> None:  # noqa: ANN001 - pyscard callback
-        try:
-            added_cards, _removed_cards = actions
+    def _poll_loop(self) -> None:
+        while not self._stop_event.is_set():
+            try:
+                self._check_readers()
+            except Exception:
+                logging.exception("Unexpected error in NFC poll loop.")
+            self._stop_event.wait(self._POLL_INTERVAL)
 
-            for card in added_cards:
-                self._read_card(card)
-        except Exception:
-            logging.exception("Error processing card event in the monitor thread.")
+    def _check_readers(self) -> None:
+        target_readers = self.matching_readers()
+        if not target_readers:
+            return
 
-    def _read_card(self, card) -> None:  # noqa: ANN001 - pyscard card object
+        for reader_name in target_readers:
+            self._check_single_reader(reader_name)
+
+    def _check_single_reader(self, reader_name: str) -> None:
+        # Find the actual reader object matching this name
+        reader_obj = next((r for r in readers() if str(r) == reader_name), None)
+        if reader_obj is None:
+            return
+
         try:
-            connection = card.createConnection()
+            connection = reader_obj.createConnection()
             connection.connect()
-            active_reader = str(connection.getReader())
+        except (CardConnectionException, NoCardException):
+            # No card on this reader — clear its presence state
+            self._card_present.discard(reader_name)
+            return
+        except Exception:
+            self._card_present.discard(reader_name)
+            return
 
-            if self.reader_name and self.reader_name.casefold() not in active_reader.casefold():
-                logging.info("Ignoring card from non-matching reader: %s", active_reader)
+        try:
+            # Only process if this is a newly inserted card
+            if reader_name in self._card_present:
                 return
 
             uid_bytes, status_high, status_low = connection.transmit(GET_CARD_UID)
             if (status_high, status_low) != (0x90, 0x00):
                 logging.warning(
                     "Reader %s could not read the card UID (status %02X%02X).",
-                    active_reader,
+                    reader_name,
                     status_high,
                     status_low,
                 )
                 return
 
             card_uid = "".join(f"{byte:02X}" for byte in uid_bytes)
+            self._card_present.add(reader_name)
             self.events.add(card_uid)
-            logging.info("Card read on %s: %s", active_reader, card_uid)
+            logging.info("Card read on %s: %s", reader_name, card_uid)
         except Exception:
-            logging.exception("Unable to read the NFC card.")
+            logging.exception("Unable to read UID from card on %s.", reader_name)
         finally:
             try:
                 connection.disconnect()
@@ -222,18 +255,27 @@ class ReaderRequestHandler(BaseHTTPRequestHandler):
 
 
 def main() -> None:
+    # Configure logging FIRST so any startup errors are visible
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+
     load_dotenv(Path(__file__).with_name(".env"))
     settings = Settings.from_environment()
     events = CardEvents()
     reader = NfcReader(events, settings.reader_name)
     server = ReaderBridge(settings, reader, events)
 
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     reader.start()
 
     logging.info("NFC reader bridge listening at http://%s:%s", settings.host, settings.port)
     if settings.reader_name:
         logging.info("Using readers whose name contains: %s", settings.reader_name)
+    else:
+        logging.info("Monitoring all available readers.")
+        found = reader.matching_readers()
+        if found:
+            logging.info("Detected readers: %s", ", ".join(found))
+        else:
+            logging.warning("No PC/SC readers found. Plug in the NFC reader and restart.")
 
     try:
         server.serve_forever()
