@@ -251,6 +251,39 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function addNewOrder(order) {
+        if (document.querySelector(`[data-order-row="${order.id}"]`)) {
+            return;
+        }
+
+        const tbody = document.querySelector('tbody');
+        if (!tbody) return;
+
+        const emptyRow = tbody.querySelector('td[colspan="7"]')?.closest('tr');
+        emptyRow?.remove();
+
+        const row = document.createElement('tr');
+        row.dataset.orderRow = order.id;
+        row.className = 'align-top bg-emerald-50/40';
+        row.innerHTML = `
+            <td class="py-4 pr-4"><p class="font-extrabold text-slate-900"></p><p class="text-xs font-bold text-slate-400"></p></td>
+            <td class="py-4 pr-4"><p class="font-bold text-slate-700"></p></td>
+            <td class="py-4 pr-4 font-semibold text-slate-600">New purchase</td>
+            <td class="py-4 pr-4 font-extrabold"></td>
+            <td class="py-4 pr-4"><span data-order-payment class="rounded-full px-3 py-1 text-xs font-extrabold"></span></td>
+            <td class="py-4 pr-4"><span data-order-status class="rounded-full px-3 py-1 text-xs font-extrabold"></span></td>
+            <td class="py-4 text-right text-xs font-bold text-emerald-600">New kiosk order</td>`;
+
+        const cells = row.querySelectorAll('td');
+        cells[0].querySelector('p').textContent = order.order_number;
+        cells[0].querySelectorAll('p')[1].textContent = order.created_at;
+        cells[1].querySelector('p').textContent = order.user;
+        cells[3].textContent = `RM ${Number(order.total).toFixed(2)}`;
+        tbody.prepend(row);
+        updateStatus(row, order.status);
+        updatePayment(row, order.payment_status);
+    }
+
     function addHistory(row, history) {
         const container = row.querySelector('[data-status-history]');
         if (! container) {
@@ -352,6 +385,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     updatePayment(row, order.payment_status);
                 }
             });
+
+            data.new_orders?.reverse().forEach(addNewOrder);
         } catch {
             // The next poll will retry if the connection is temporarily unavailable.
         } finally {

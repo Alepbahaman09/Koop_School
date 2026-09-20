@@ -69,6 +69,38 @@ return new class extends Migration
             FOR EACH ROW
             EXECUTE FUNCTION public.sync_product_stock_alert();
 
+            CREATE OR REPLACE FUNCTION public.notify_admin_terminal_purchase()
+            RETURNS TRIGGER
+            LANGUAGE plpgsql
+            SET search_path = ''
+            AS $$
+            BEGIN
+                IF NEW.status <> 'Completed' THEN
+                    RETURN NEW;
+                END IF;
+
+                INSERT INTO public.admin_notifications (type, title, message, link, data, created_at, updated_at)
+                SELECT
+                    'purchase',
+                    'Kiosk purchase',
+                    'Kiosk purchase · ' || pg_catalog.split_part(orders.order_number, '-', 3) ||
+                        ' of RM ' || pg_catalog.to_char(NEW.amount, 'FM999999990.00') || ' was completed.',
+                    '/orders',
+                    pg_catalog.jsonb_build_object('order_id', orders.id, 'order_number', orders.order_number, 'amount', NEW.amount, 'payment_method', NEW.payment_method),
+                    NOW(), NOW()
+                FROM public.orders AS orders
+                WHERE orders.id = NEW.order_id;
+
+                RETURN NEW;
+            END;
+            $$;
+
+            DROP TRIGGER IF EXISTS terminal_payments_admin_notification ON public.terminal_payments;
+            CREATE TRIGGER terminal_payments_admin_notification
+            AFTER INSERT OR UPDATE OF status ON public.terminal_payments
+            FOR EACH ROW
+            EXECUTE FUNCTION public.notify_admin_terminal_purchase();
+
             CREATE TABLE IF NOT EXISTS public.admin_notification_signals (
                 id SMALLINT PRIMARY KEY,
                 revision BIGINT NOT NULL DEFAULT 0,
@@ -165,6 +197,8 @@ return new class extends Migration
             DROP TABLE IF EXISTS public.admin_notification_signals;
             DROP TRIGGER IF EXISTS products_sync_stock_alert ON public.products;
             DROP FUNCTION IF EXISTS public.sync_product_stock_alert();
+            DROP TRIGGER IF EXISTS terminal_payments_admin_notification ON public.terminal_payments;
+            DROP FUNCTION IF EXISTS public.notify_admin_terminal_purchase();
             SQL);
     }
 };

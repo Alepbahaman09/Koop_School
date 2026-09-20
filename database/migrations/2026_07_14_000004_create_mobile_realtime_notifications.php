@@ -85,9 +85,18 @@ return new class extends Migration
                 SELECT
                     orders.user_id,
                     'in_app',
-                    'Payment successful',
-                    'Payment of RM ' || pg_catalog.to_char(NEW.amount, 'FM999999990.00') ||
-                        ' for order ' || orders.order_number || ' was completed.',
+                    CASE
+                        WHEN TG_TABLE_NAME = 'terminal_payments' THEN 'Kiosk purchase'
+                        ELSE 'Payment successful'
+                    END,
+                    CASE
+                        WHEN TG_TABLE_NAME = 'terminal_payments' THEN
+                            'Kiosk purchase · ' || pg_catalog.split_part(orders.order_number, '-', 3) ||
+                            ' payment of RM ' || pg_catalog.to_char(NEW.amount, 'FM999999990.00') || ' was completed.'
+                        ELSE
+                            'Payment of RM ' || pg_catalog.to_char(NEW.amount, 'FM999999990.00') ||
+                            ' for order ' || orders.order_number || ' was completed.'
+                    END,
                     'purchase',
                     'unread',
                     pg_catalog.jsonb_build_object(
@@ -117,6 +126,13 @@ return new class extends Migration
 
             CREATE TRIGGER payments_notify_user
             AFTER INSERT OR UPDATE OF status ON public.payments
+            FOR EACH ROW
+            EXECUTE FUNCTION public.notify_user_completed_payment();
+
+            DROP TRIGGER IF EXISTS terminal_payments_notify_user ON public.terminal_payments;
+
+            CREATE TRIGGER terminal_payments_notify_user
+            AFTER INSERT OR UPDATE OF status ON public.terminal_payments
             FOR EACH ROW
             EXECUTE FUNCTION public.notify_user_completed_payment();
 
@@ -190,6 +206,7 @@ return new class extends Migration
             DROP TRIGGER IF EXISTS products_notify_users_out_of_stock ON public.products;
             DROP FUNCTION IF EXISTS public.notify_users_product_out_of_stock();
             DROP TRIGGER IF EXISTS payments_notify_user ON public.payments;
+            DROP TRIGGER IF EXISTS terminal_payments_notify_user ON public.terminal_payments;
             DROP FUNCTION IF EXISTS public.notify_user_completed_payment();
             DROP TRIGGER IF EXISTS transactions_notify_user ON public.transactions;
             DROP FUNCTION IF EXISTS public.notify_user_transaction();

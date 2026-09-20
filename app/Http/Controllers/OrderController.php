@@ -78,9 +78,28 @@ class OrderController extends Controller
                 'payment_status' => $order->payment_status,
             ]);
 
+        $latestKnownId = $orderIds->max() ?? 0;
+        $newOrders = Order::query()
+            ->where('id', '>', $latestKnownId)
+            ->latest()
+            ->limit(20)
+            ->with(['customer:id,parent_name,student_name', 'user:id,name,username'])
+            ->get(['id', 'order_number', 'customer_id', 'user_id', 'status', 'total_amount', 'payment_status', 'created_at'])
+            ->map(fn (Order $order) => [
+                'id' => $order->id,
+                'order_number' => $order->order_number,
+                'customer' => $order->customer?->student_name ?: $order->customer?->parent_name ?: 'Unknown customer',
+                'user' => $order->user?->username ?: $order->user?->name ?: 'Unknown user',
+                'status' => $order->status,
+                'payment_status' => $order->payment_status,
+                'total' => (float) $order->total_amount,
+                'created_at' => $order->created_at->format('d M Y, h:i A'),
+            ]);
+
         return response()->json([
             'stats' => $this->orderStats(),
             'orders' => $orders,
+            'new_orders' => $newOrders,
         ]);
     }
 
