@@ -98,19 +98,22 @@ class NfcReader(CardObserver):
         return [name for name in available if wanted in name.casefold()]
 
     def update(self, observable, actions) -> None:  # noqa: ANN001 - pyscard callback
-        added_cards, _removed_cards = actions
+        try:
+            added_cards, _removed_cards = actions
 
-        for card in added_cards:
-            self._read_card(card)
+            for card in added_cards:
+                self._read_card(card)
+        except Exception:
+            logging.exception("Error processing card event in the monitor thread.")
 
     def _read_card(self, card) -> None:  # noqa: ANN001 - pyscard card object
-        connection = card.createConnection()
-
         try:
+            connection = card.createConnection()
             connection.connect()
             active_reader = str(connection.getReader())
 
             if self.reader_name and self.reader_name.casefold() not in active_reader.casefold():
+                logging.info("Ignoring card from non-matching reader: %s", active_reader)
                 return
 
             uid_bytes, status_high, status_low = connection.transmit(GET_CARD_UID)
