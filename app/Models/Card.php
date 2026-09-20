@@ -12,4 +12,9 @@ class Card extends Model
     {
         return ['balance' => 'decimal:2', 'is_frozen' => 'boolean', 'last_used_at' => 'datetime'];
     }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

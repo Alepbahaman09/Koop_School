@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Card;
 use App\Models\Customer;
+use App\Models\InventoryTransaction;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderStatusHistory;
@@ -39,16 +40,43 @@ class CashierController extends Controller
         $items = $request->items;
         $paymentMethod = $request->payment_method;
         $cashReceived = (float) ($request->cash_received ?? 0);
-        $cardUid = $request->card_uid;
+        $cardUid = trim((string) $request->card_uid);
 
         // ── Main transaction ────────────────────────────────────
         try {
             DB::beginTransaction();
 
+            $card = null;
+            $saleUser = null;
+            $cardId = null;
+
+            // Lock a cardholder before stock and card rows. This is the same
+            // order used by mobile purchases, preventing cross-channel
+            // deadlocks when the same account pays in the app and at the POS.
+            if ($paymentMethod === 'NFC Card') {
+                $cardIdentity = Card::where('card_uid', $cardUid)->first(['id', 'user_id']);
+
+                if (! $cardIdentity) {
+                    DB::rollBack();
+
+                    return response()->json(['success' => false, 'message' => 'NFC Card not found.'], 404);
+                }
+
+                $cardId = $cardIdentity->id;
+                $saleUser = User::whereKey($cardIdentity->user_id)->lockForUpdate()->first();
+
+                if (! $saleUser) {
+                    DB::rollBack();
+
+                    return response()->json(['success' => false, 'message' => 'The NFC card is not linked to a user account.'], 422);
+                }
+            }
+
             // Lock products before checking stock so two cashiers cannot sell
             // the same final item.
-            $productIds = array_column($items, 'product_id');
+            $productIds = collect($items)->pluck('product_id')->sort()->values()->all();
             $products = Product::whereIn('id', $productIds)
+                ->orderBy('id')
                 ->lockForUpdate()
                 ->get()
                 ->keyBy('id');
@@ -86,14 +114,13 @@ class CashierController extends Controller
             }
 
             // The row lock keeps the balance stable until this sale commits.
-            $card = null;
             if ($paymentMethod === 'NFC Card') {
-                $card = Card::where('card_uid', $cardUid)->lockForUpdate()->first();
+                $card = Card::whereKey($cardId)->lockForUpdate()->first();
 
-                if (! $card) {
+                if (! $card || $card->user_id !== $saleUser->id) {
                     DB::rollBack();
 
-                    return response()->json(['success' => false, 'message' => 'NFC Card not found.'], 404);
+                    return response()->json(['success' => false, 'message' => 'The NFC card assignment changed. Please tap the card again.'], 409);
                 }
 
                 if ($card->is_frozen) {
@@ -110,39 +137,22 @@ class CashierController extends Controller
                         'message' => 'Insufficient card balance. Available: RM '.number_format($card->balance, 2),
                     ], 422);
                 }
+
             }
 
-            // Find or create default walk-in user & customer for database integrity
-            $user = User::where('email', 'pos@koop.school')->first();
-            if (! $user) {
-                $user = User::create([
-                    'name' => 'POS Walk-in',
-                    'email' => 'pos@koop.school',
-                    'password' => Hash::make(Str::random(16)),
-                    'wallet_balance' => 0,
-                    'email_verified_at' => now(),
-                ]);
-            }
-
-            $customer = Customer::where('student_id', 'POS-WALKIN')->first();
-            if (! $customer) {
-                $customer = Customer::create([
-                    'student_id' => 'POS-WALKIN',
-                    'student_name' => 'Walk-in Customer',
-                    'parent_name' => 'Walk-in Parent',
-                    'email' => 'pos@koop.school',
-                    'phone' => '-',
-                    'class' => '-',
-                    'address' => '-',
-                ]);
-            }
+            // Cash sales have no cardholder to associate. NFC sales use the
+            // cardholder's real user and customer records instead of this walk-in account.
+            $saleUser ??= $this->walkInUser();
+            $customer = $paymentMethod === 'NFC Card'
+                ? $this->customerForUser($saleUser)
+                : $this->walkInCustomer();
 
             // 1. Create order
             $orderNumber = $this->generateOrderNumber();
             $order = Order::create([
                 'order_number' => $orderNumber,
                 'customer_id' => $customer->id,
-                'user_id' => $user->id,
+                'user_id' => $saleUser->id,
                 'status' => Order::STATUS_COMPLETED,
                 'payment_status' => 'Paid',
                 'subtotal' => $total,
@@ -166,7 +176,22 @@ class CashierController extends Controller
                     'subtotal' => $lineTotal,
                 ]);
 
-                $product->decrement('stock_quantity', $qty);
+                $stockBefore = (int) $product->stock_quantity;
+                $stockAfter = $stockBefore - $qty;
+                $product->update(['stock_quantity' => $stockAfter]);
+
+                InventoryTransaction::create([
+                    'product_id' => $product->id,
+                    'user_id' => $saleUser->id,
+                    'admin_id' => auth()->id(),
+                    'type' => 'Out',
+                    'quantity' => $qty,
+                    'stock_before' => $stockBefore,
+                    'stock_after' => $stockAfter,
+                    'reference_type' => Order::class,
+                    'reference_id' => $order->id,
+                    'notes' => 'Stock reduced by POS '.$paymentMethod.' sale',
+                ]);
             }
 
             // 3. Process payment
@@ -179,6 +204,8 @@ class CashierController extends Controller
 
             TerminalPayment::create([
                 'order_id' => $order->id,
+                'user_id' => $saleUser->id,
+                'card_id' => $card?->id,
                 'payment_reference' => $paymentReference,
                 'payment_method' => $paymentMethod,
                 'amount' => $total,
@@ -245,9 +272,12 @@ class CashierController extends Controller
     // ─────────────────────────────────────────────────────────
     public function cardLookup(Request $request): JsonResponse
     {
-        $request->validate(['card_uid' => 'required|string|max:128']);
+        $request->validate([
+            'card_uid' => 'required|string|max:128',
+            'amount' => 'nullable|numeric|min:0.01',
+        ]);
 
-        $card = Card::where('card_uid', $request->card_uid)->first();
+        $card = Card::where('card_uid', trim((string) $request->card_uid))->first();
 
         if (! $card) {
             return response()->json(['success' => false, 'message' => 'Card not found.'], 404);
@@ -255,6 +285,13 @@ class CashierController extends Controller
 
         if ($card->is_frozen) {
             return response()->json(['success' => false, 'message' => 'Card is frozen.'], 422);
+        }
+
+        if ($request->filled('amount') && (float) $card->balance < (float) $request->amount) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Insufficient card balance. Available: RM '.number_format($card->balance, 2),
+            ], 422);
         }
 
         return response()->json([
@@ -337,6 +374,56 @@ class CashierController extends Controller
         $seq = $last ? ((int) substr($last, -4)) + 1 : 1;
 
         return $prefix.str_pad($seq, 4, '0', STR_PAD_LEFT);
+    }
+
+    private function walkInUser(): User
+    {
+        return User::firstOrCreate(
+            ['email' => 'pos@koop.school'],
+            [
+                'name' => 'POS Walk-in',
+                'password' => Hash::make(Str::random(16)),
+                'wallet_balance' => 0,
+                'email_verified_at' => now(),
+            ]
+        );
+    }
+
+    private function walkInCustomer(): Customer
+    {
+        return Customer::firstOrCreate(
+            ['student_id' => 'POS-WALKIN'],
+            [
+                'student_name' => 'Walk-in Customer',
+                'parent_name' => 'Walk-in Parent',
+                'email' => 'pos@koop.school',
+                'phone' => '-',
+                'class' => '-',
+                'address' => '-',
+            ]
+        );
+    }
+
+    private function customerForUser(User $user): Customer
+    {
+        $customer = Customer::where('email', $user->email)
+            ->orWhere('student_id', 'APP-'.$user->id)
+            ->lockForUpdate()
+            ->first();
+
+        if ($customer) {
+            return $customer;
+        }
+
+        return Customer::create([
+            'student_id' => 'APP-'.$user->id,
+            'student_name' => $user->username ?: $user->name,
+            'parent_name' => $user->username ?: $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone_number ?: '-',
+            'class' => '-',
+            'address' => '-',
+        ]);
     }
 
     private function bustSalesCaches(): void

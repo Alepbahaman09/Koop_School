@@ -714,26 +714,12 @@ const CAT_EMOJI = {
     'Others':       '🛒',
 };
 
-const SAMPLE_HISTORY = [
-    { id:'POS-000042', date:'2026-07-13 09:14', total:12.50, method:'Cash',      status:'Paid', cashier:'Ahmad Rozi' },
-    { id:'POS-000041', date:'2026-07-13 08:55', total:8.70,  method:'NFC Card',  status:'Paid', cashier:'Ahmad Rozi' },
-    { id:'POS-000040', date:'2026-07-12 14:30', total:3.00,  method:'NFC Card',  status:'Paid', cashier:'Nurul Ain'  },
-    { id:'POS-000039', date:'2026-07-12 11:18', total:17.40, method:'Cash',      status:'Paid', cashier:'Ahmad Rozi' },
-    { id:'POS-000038', date:'2026-07-12 10:02', total:5.50,  method:'Cash',      status:'Paid', cashier:'Nurul Ain'  },
-    { id:'POS-000037', date:'2026-07-11 15:45', total:22.00, method:'NFC Card',  status:'Paid', cashier:'Ahmad Rozi' },
-    { id:'POS-000036', date:'2026-07-11 13:22', total:9.10,  method:'NFC Card',  status:'Paid', cashier:'Ahmad Rozi' },
-    { id:'POS-000035', date:'2026-07-11 09:08', total:4.50,  method:'Cash',      status:'Paid', cashier:'Nurul Ain'  },
-    { id:'POS-000034', date:'2026-07-10 16:55', total:14.20, method:'Cash',      status:'Paid', cashier:'Ahmad Rozi' },
-    { id:'POS-000033', date:'2026-07-10 12:30', total:6.90,  method:'NFC Card',  status:'Paid', cashier:'Ahmad Rozi' },
-];
-
 // ─────────────────────────────────────────────
 // STATE
 // ─────────────────────────────────────────────
 let cart       = [];   // { product, qty }
 let payMethod  = 'Cash';
 let activeCat  = 'All';
-let txnCounter = 43;
 
 // ─────────────────────────────────────────────
 // LIVE CLOCK
@@ -885,6 +871,12 @@ function renderCart() {
         return;
     }
 
+    // A changed cart has a different amount. Require a new card tap before
+    // the cashier can charge that new amount.
+    if (payMethod === 'NFC Card' && scannedCardUid) {
+        resetNfcScan();
+    }
+
     empty.style.display = 'none';
     badge.classList.remove('hidden');
     clearB.classList.remove('hidden');
@@ -960,7 +952,9 @@ function selectPayMethod(el) {
     });
 
     if (payMethod === 'NFC Card') {
-        document.getElementById('nfc-wedge-input')?.focus();
+        // A scan is valid for one cart only, so changing back to NFC always
+        // starts with a fresh card tap.
+        resetNfcScan();
     }
 
     updateCheckoutBtn();
@@ -1002,6 +996,7 @@ function updateCheckoutBtn() {
 // NFC CARD SCANNER (keyboard-wedge)
 // ─────────────────────────────────────────────
 let scannedCardUid = null;
+let checkoutInProgress = false;
 
 let lastNfcEvent = 0;
 let nfcPollTimer = null;
@@ -1085,7 +1080,7 @@ function processNfcScan(uid) {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
             'Accept': 'application/json',
         },
-        body: JSON.stringify({ card_uid: uid }),
+        body: JSON.stringify({ card_uid: uid, amount: getTotal() }),
     })
     .then(r => r.json())
     .then(d => {
@@ -1125,8 +1120,9 @@ function resetNfcScan() {
 // CHECKOUT  — real API call to /cashier/sale
 // ─────────────────────────────────────────────
 function doCheckout() {
-    if (cart.length === 0) return;
+    if (cart.length === 0 || checkoutInProgress) return;
 
+    checkoutInProgress = true;
     const total       = getTotal();
     const received    = parseFloat(document.getElementById('cash-received').value) || 0;
     const btn         = document.getElementById('checkout-btn');
@@ -1151,6 +1147,7 @@ function doCheckout() {
     })
     .then(r => r.json())
     .then(d => {
+        checkoutInProgress = false;
         btn.disabled = false;
         updateCheckoutBtn();
 
@@ -1203,6 +1200,7 @@ function doCheckout() {
         openModal('receipt-modal');
     })
     .catch(() => {
+        checkoutInProgress = false;
         btn.disabled = false;
         updateCheckoutBtn();
         toast('Connection error. Please check your network and retry.');
