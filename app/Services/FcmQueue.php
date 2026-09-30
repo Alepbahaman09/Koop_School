@@ -15,42 +15,62 @@ class FcmQueue
             return;
         }
 
-        DB::table('fcm_notification_queue')
-            ->whereNull('sent_at')
-            ->where('attempts', '<', 5)
-            ->orderBy('id')
-            ->limit($limit)
-            ->pluck('notification_id')
-            ->each(fn ($id) => $this->process((int) $id));
+        $notificationIds = DB::transaction(function () use ($limit) {
+            return DB::table('fcm_notification_queue')
+                ->whereNull('sent_at')
+                ->where('attempts', '<', 5)
+                ->orderBy('id')
+                ->limit($limit)
+                ->lock('FOR UPDATE SKIP LOCKED')
+                ->pluck('notification_id')
+                ->all();
+        });
+
+        foreach ($notificationIds as $id) {
+            $this->process((int) $id);
+        }
     }
 
     public function process(int $notificationId): bool
     {
-        $queue = DB::table('fcm_notification_queue')
-            ->where('notification_id', $notificationId)
-            ->whereNull('sent_at')
-            ->first();
+        $claimed = DB::transaction(function () use ($notificationId) {
+            $queue = DB::table('fcm_notification_queue')
+                ->where('notification_id', $notificationId)
+                ->whereNull('sent_at')
+                ->where('attempts', '<', 5)
+                ->lockForUpdate()
+                ->first();
 
-        if (! $queue) {
+            if (! $queue) {
+                return null;
+            }
+
+            DB::table('fcm_notification_queue')
+                ->where('id', $queue->id)
+                ->update([
+                    'attempts' => DB::raw('attempts + 1'),
+                    'sent_at' => now(),
+                ]);
+
+            return $queue;
+        });
+
+        if (! $claimed) {
             return true;
         }
 
-        DB::table('fcm_notification_queue')
-            ->where('id', $queue->id)
-            ->increment('attempts');
-
         try {
             $this->fcm->sendNotification($notificationId);
-            DB::table('fcm_notification_queue')
-                ->where('id', $queue->id)
-                ->update(['sent_at' => now(), 'last_error' => null]);
 
             return true;
         } catch (Throwable $error) {
             report($error);
             DB::table('fcm_notification_queue')
-                ->where('id', $queue->id)
-                ->update(['last_error' => $error->getMessage()]);
+                ->where('id', $claimed->id)
+                ->update([
+                    'sent_at' => null,
+                    'last_error' => $error->getMessage(),
+                ]);
 
             return false;
         }

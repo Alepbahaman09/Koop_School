@@ -10,6 +10,27 @@ use Livewire\Volt\Component;
 new #[Layout('layouts.guest')] class extends Component
 {
     /**
+     * Check verification status on load.
+     */
+    public function mount(): void
+    {
+        /** @var Admin|null $user */
+        $user = Auth::user();
+
+        if ($user === null) {
+            $this->redirectRoute('login', navigate: true);
+
+            return;
+        }
+
+        if ($user->hasVerifiedEmail()) {
+            $this->redirectIntended(default: route('dashboard', absolute: false), navigate: true);
+
+            return;
+        }
+    }
+
+    /**
      * Send an email verification notification to the user.
      */
     public function sendVerification(): void
@@ -47,18 +68,18 @@ new #[Layout('layouts.guest')] class extends Component
 
 <div>
     <div class="mb-4 text-sm text-gray-600">
-        {{ __('Thanks for signing up! Before getting started, could you verify your email address by clicking on the link we just emailed to you? If you didn\'t receive the email, we will gladly send you another.') }}
+        {{ __('Thanks for signing up! Click the button below to receive your verification email, then click the link inside to activate your administrator account.') }}
     </div>
 
     @if (session('status') == 'verification-link-sent')
         <div class="mb-4 font-medium text-sm text-green-600">
-            {{ __('A new verification link has been sent to the email address you provided during registration.') }}
+            {{ __('A verification link has been sent to your email address.') }}
         </div>
     @endif
 
     <div class="mt-4 flex items-center justify-between">
         <x-primary-button wire:click="sendVerification">
-            {{ __('Resend Verification Email') }}
+            {{ __('Send Verification Email') }}
         </x-primary-button>
 
         <button wire:click="logout" type="submit" class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">

@@ -25,15 +25,37 @@ class OrderController extends Controller
                         ->latest()
                         ->with(['user:id,name', 'admin:id,name']);
                 },
+                // Load terminal payments so we can tell if the order came from the kiosk POS
+                'terminalPayments' => function ($q) {
+                    $q->select(['id', 'order_id', 'user_id', 'card_id', 'payment_method'])
+                        ->with(['user:id,name,username', 'card:id,owner']);
+                },
+                // Load regular (app/online) payments to identify the payment method
+                'payments:id,order_id,payment_method',
             ])
             ->withSum(['payments as completed_payments_total' => fn ($q) => $q->where('status', 'Completed')], 'amount');
 
+        // Filter by order status
         if (in_array($request->status, Order::STATUSES, true)) {
             $query->where('status', $request->status);
         }
 
-        if ($request->payment_status) {
-            $query->where('payment_status', $request->payment_status);
+        // Filter by payment method: Cash, NFC, or Online
+        $paymentMethodFilter = $request->input('payment_method');
+        if ($paymentMethodFilter === 'Cash') {
+            // Cash means the order has a terminal payment with payment_method = 'Cash'
+            $query->whereHas('terminalPayments', function ($q) {
+                $q->where('payment_method', 'Cash');
+            });
+        } elseif ($paymentMethodFilter === 'NFC') {
+            // NFC means the order has a terminal payment with payment_method = 'NFC Card'
+            $query->whereHas('terminalPayments', function ($q) {
+                $q->where('payment_method', 'NFC Card');
+            });
+        } elseif ($paymentMethodFilter === 'Online') {
+            // Online means the order has a regular payment but NO terminal payment
+            $query->whereHas('payments')
+                ->whereDoesntHave('terminalPayments');
         }
 
         if ($request->search) {
@@ -58,7 +80,10 @@ class OrderController extends Controller
         $stats = $this->orderStats();
         $statuses = Order::STATUSES;
 
-        return view('orders', compact('orders', 'stats', 'statuses'));
+        // Payment method options for the filter dropdown
+        $paymentMethods = ['Cash', 'NFC', 'Online'];
+
+        return view('orders', compact('orders', 'stats', 'statuses', 'paymentMethods'));
     }
 
     public function snapshot(Request $request)
@@ -78,28 +103,9 @@ class OrderController extends Controller
                 'payment_status' => $order->payment_status,
             ]);
 
-        $latestKnownId = $orderIds->max() ?? 0;
-        $newOrders = Order::query()
-            ->where('id', '>', $latestKnownId)
-            ->latest()
-            ->limit(20)
-            ->with(['customer:id,parent_name,student_name', 'user:id,name,username'])
-            ->get(['id', 'order_number', 'customer_id', 'user_id', 'status', 'total_amount', 'payment_status', 'created_at'])
-            ->map(fn (Order $order) => [
-                'id' => $order->id,
-                'order_number' => $order->order_number,
-                'customer' => $order->customer?->student_name ?: $order->customer?->parent_name ?: 'Unknown customer',
-                'user' => $order->user?->username ?: $order->user?->name ?: 'Unknown user',
-                'status' => $order->status,
-                'payment_status' => $order->payment_status,
-                'total' => (float) $order->total_amount,
-                'created_at' => $order->created_at->format('d M Y, h:i A'),
-            ]);
-
         return response()->json([
             'stats' => $this->orderStats(),
             'orders' => $orders,
-            'new_orders' => $newOrders,
         ]);
     }
 
@@ -196,5 +202,20 @@ class OrderController extends Controller
         $order->delete();
 
         return redirect()->route('orders.index')->with('success', 'Order deleted successfully');
+    }
+
+    public function receipt(Order $order)
+    {
+        $order->load([
+            'customer',
+            'user',
+            'student',
+            'orderItems.product',
+            'terminalPayments.user',
+            'terminalPayments.card',
+            'payments',
+        ]);
+
+        return view('orders.receipt', compact('order'));
     }
 }

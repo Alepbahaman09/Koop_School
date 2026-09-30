@@ -20,6 +20,8 @@ class CustomerController extends Controller
                 'email_verified_at',
                 'created_at',
             ])
+            // Exclude the POS walk-in account — kiosk is not a real user
+            ->where('email', '!=', 'pos@koop.school')
             ->with(['students' => fn ($query) => $query
                 ->select(['id', 'user_id', 'name', 'class', 'is_active'])
                 ->where('is_active', true)
@@ -28,7 +30,7 @@ class CustomerController extends Controller
                 ->select(['id', 'user_id', 'student_id', 'order_number', 'status', 'payment_status', 'total_amount', 'created_at'])
                 ->latest()
                 ->limit(8)
-                ->with('student:id,name,class')])
+                ->with(['student:id,name,class', 'terminalPayments:id,order_id,payment_method'])])
             ->withCount('orders')
             ->withSum(['orders as total_spent' => function ($query) {
                 $query->where('payment_status', 'Paid');
@@ -55,6 +57,8 @@ class CustomerController extends Controller
         $users = $query->latest()->paginate(20)->withQueryString();
         $userStats = Cache::remember('users.stats', 30, fn () => (array) User::query()
             ->toBase()
+            // Exclude the POS walk-in account from stats
+            ->where('email', '!=', 'pos@koop.school')
             ->selectRaw(
                 <<<'SQL'
                 COUNT(*) as total,

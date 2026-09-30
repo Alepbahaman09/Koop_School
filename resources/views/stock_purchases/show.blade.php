@@ -4,7 +4,6 @@
 @section('page-title', 'Stock Purchase #' . str_pad($stockPurchase->id, 5, '0', STR_PAD_LEFT))
 
 @section('content')
-@include('partials.admin-alerts')
 <section class="max-w-4xl mx-auto space-y-6">
     <div class="flex items-center justify-between">
         <div>

@@ -5,15 +5,22 @@
 
 @section('content')
 @php
-    $paymentStatuses = ['Unpaid', 'Partial', 'Paid', 'Refunded'];
     $statusClass = [
         'Processing' => 'bg-sky-50 text-sky-700',
         'Ready' => 'bg-violet-50 text-violet-700',
         'Completed' => 'bg-emerald-50 text-emerald-700',
         'Cancelled' => 'bg-rose-50 text-rose-700',
     ];
+
+    // Colors for payment method badges
+    $paymentMethodClass = [
+        'Cash' => 'bg-amber-50 text-amber-700',
+        'NFC' => 'bg-blue-50 text-blue-700',
+        'Online' => 'bg-purple-50 text-purple-700',
+    ];
 @endphp
 
+{{-- Page header --}}
 <section class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <div>
         <h1 class="text-xl font-extrabold">Orders</h1>
@@ -21,6 +28,7 @@
     </div>
 </section>
 
+{{-- Stats cards: Total Orders, In Progress, Completed, Cancelled --}}
 <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
     @foreach ([
         ['Total Orders', 'total', $stats['total'], 'text-indigo-600'],
@@ -35,11 +43,18 @@
     @endforeach
 </section>
 
+{{-- Orders table section --}}
 <section class="rounded-lg bg-white p-5 shadow-sm ring-1 ring-slate-100">
+
+    {{-- Filter form --}}
     <form method="GET" class="mb-5 grid gap-3 lg:grid-cols-[1fr_13rem_13rem_auto] lg:items-end">
+
+        {{-- Search box --}}
         <label class="text-xs font-extrabold uppercase text-slate-400">Search
             <input name="search" value="{{ request('search') }}" placeholder="Order number, parent, or student" class="mt-1 h-10 w-full rounded-lg border-slate-200 text-sm">
         </label>
+
+        {{-- Order status filter --}}
         <label class="text-xs font-extrabold uppercase text-slate-400">Order Status
             <select name="status" class="mt-1 h-10 w-full rounded-lg border-slate-200 text-sm">
                 <option value="">All statuses</option>
@@ -48,73 +63,152 @@
                 @endforeach
             </select>
         </label>
+
+        {{-- Payment method filter: Cash, NFC, Online --}}
         <label class="text-xs font-extrabold uppercase text-slate-400">Payment
-            <select name="payment_status" class="mt-1 h-10 w-full rounded-lg border-slate-200 text-sm">
+            <select name="payment_method" class="mt-1 h-10 w-full rounded-lg border-slate-200 text-sm">
                 <option value="">All payments</option>
-                @foreach ($paymentStatuses as $paymentStatus)
-                    <option value="{{ $paymentStatus }}" @selected(request('payment_status') === $paymentStatus)>{{ $paymentStatus }}</option>
+                @foreach ($paymentMethods as $method)
+                    <option value="{{ $method }}" @selected(request('payment_method') === $method)>{{ $method }}</option>
                 @endforeach
             </select>
         </label>
+
+        {{-- Filter and clear buttons --}}
         <div class="flex gap-2">
             <button class="h-10 rounded-lg bg-slate-900 px-5 text-sm font-extrabold text-white">Filter</button>
             <a href="{{ route('orders.index') }}" class="inline-flex h-10 items-center rounded-lg px-4 text-sm font-bold text-slate-500 ring-1 ring-slate-200">Clear</a>
         </div>
     </form>
 
+    {{-- Orders table --}}
     <div class="overflow-x-auto">
         <table class="w-full min-w-[1050px] text-left text-sm">
             <thead><tr class="border-b border-slate-100 text-xs font-extrabold uppercase text-slate-400">
                 <th class="py-3 pr-4">Order</th><th class="py-3 pr-4">Customer</th><th class="py-3 pr-4">Items</th>
-                <th class="py-3 pr-4">Total</th><th class="py-3 pr-4">Payment</th><th class="py-3 pr-4">Status</th><th class="py-3 text-right">Update</th>
+                <th class="py-3 pr-4">Total</th><th class="py-3 pr-4">Payment</th><th class="py-3 pr-4">Status</th><th class="py-3 pr-4">Action</th>
             </tr></thead>
             <tbody class="divide-y divide-slate-100">
             @forelse ($orders as $order)
                 @php
-                    $userName = $order->user?->username ?: $order->user?->name ?: $order->customer?->parent_name ?: 'Unknown user';
-                    $studentName = $order->student?->name;
-                    $studentClass = $order->student?->class;
+                    // ─── Figure out the payment method and customer label ───
+                    $terminalPayment = $order->terminalPayments->first();
+                    $regularPayment = $order->payments->first();
 
-                    if (! $studentName && $order->customer?->student_name && $order->customer->student_name !== '-') {
-                        $studentName = $order->customer->student_name;
-                        $studentClass = $order->customer->class !== '-' ? $order->customer->class : null;
+                    if ($terminalPayment && $terminalPayment->payment_method === 'Cash') {
+                        // Kiosk POS cash sale — show "Cash-{payment id}"
+                        $customerLabel = 'Cash-' . $terminalPayment->id;
+                        $paymentMethod = 'Cash';
+
+                    } elseif ($terminalPayment && $terminalPayment->payment_method === 'NFC Card') {
+                        // Kiosk POS NFC card sale — show "{user name} - {card owner name}"
+                        $nfcUserName = $terminalPayment->user?->name
+                            ?? $terminalPayment->user?->username
+                            ?? 'Unknown';
+                        $cardOwnerName = $terminalPayment->card?->owner ?? 'Unknown card';
+                        $customerLabel = $nfcUserName . ' - ' . $cardOwnerName;
+                        $paymentMethod = 'NFC';
+
+                    } elseif ($regularPayment) {
+                        // Online / mobile app sale — show "{parent name} - {student name}"
+                        $parentName = $order->user?->name
+                            ?? $order->user?->username
+                            ?? $order->customer?->parent_name
+                            ?? 'Unknown';
+                        $childName = $order->student?->name
+                            ?? $order->customer?->student_name
+                            ?? 'Unknown student';
+                        $customerLabel = $parentName . ' - ' . $childName;
+                        $paymentMethod = 'Online';
+
+                    } else {
+                        // Kiosk order that has no payment record yet
+                        $customerLabel = 'Kiosk-' . $order->id;
+                        $paymentMethod = '-';
                     }
 
-                    $studentLabel = $studentName
-                        ? $studentName . ($studentClass ? ' (' . $studentClass . ')' : '')
-                        : 'Not recorded';
+                    $isKioskPayment = (bool) ($terminalPayment || str_starts_with($order->order_number, 'POS-') || in_array($paymentMethod, ['Cash', 'NFC'], true));
+
+                    // For the detail panel sidebar
+                    $studentLabel = $order->student?->name
+                        ? $order->student->name . ($order->student->class ? ' (' . $order->student->class . ')' : '')
+                        : ($order->customer?->student_name && $order->customer->student_name !== '-'
+                            ? $order->customer->student_name . ($order->customer->class && $order->customer->class !== '-' ? ' (' . $order->customer->class . ')' : '')
+                            : 'Not recorded');
+
+                    // Parent account name for the detail panel
+                    $parentAccountName = $order->user?->username
+                        ?? $order->user?->name
+                        ?? $order->customer?->parent_name
+                        ?? 'Unknown user';
                 @endphp
                 <tr data-order-row="{{ $order->id }}" class="align-top">
+
+                    {{-- Order number and date --}}
                     <td class="py-4 pr-4">
-                        <p class="font-extrabold text-slate-900">{{ $order->order_number }}</p>
+                        @if (str_starts_with($order->order_number, 'POS-'))
+                            <p class="font-extrabold text-slate-900">Kiosk-{{ $order->id }}</p>
+                        @else
+                            <p class="font-extrabold text-slate-900">{{ $order->order_number }}</p>
+                        @endif
                         <p class="text-xs font-bold text-slate-400">{{ $order->created_at->format('d M Y, h:i A') }}</p>
                     </td>
+
+                    {{-- Customer label (changes based on payment method) --}}
                     <td class="py-4 pr-4">
-                        <p class="font-bold text-slate-700">{{ $userName }}</p>
+                        <p class="font-bold text-slate-700">{{ $customerLabel }}</p>
                     </td>
+
+                    {{-- Item count --}}
                     <td class="py-4 pr-4 font-semibold text-slate-600">{{ $order->orderItems->sum('quantity') }} item(s)</td>
+
+                    {{-- Total amount --}}
                     <td class="py-4 pr-4 font-extrabold">RM {{ number_format($order->total_amount, 2) }}</td>
+
+                    {{-- Payment method badge --}}
                     <td class="py-4 pr-4">
-                        <span data-order-payment class="rounded-full px-3 py-1 text-xs font-extrabold {{ $order->payment_status === 'Paid' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600' }}">{{ $order->payment_status }}</span>
+                        <span data-order-payment class="rounded-full px-3 py-1 text-xs font-extrabold {{ $paymentMethodClass[$paymentMethod] ?? 'bg-slate-100 text-slate-600' }}">{{ $paymentMethod }}</span>
                     </td>
+
+                    {{-- Order status badge --}}
                     <td class="py-4 pr-4"><span data-order-status class="rounded-full px-3 py-1 text-xs font-extrabold {{ $statusClass[$order->status] ?? 'bg-slate-100 text-slate-600' }}">{{ $order->status }}</span></td>
-                    <td class="py-4 text-right">
+
+                    {{-- Manage button and detail modal (hidden for kiosk payments) --}}
+                    <td class="py-4 pr-4">
+                        @if (! $isKioskPayment)
                         <details>
                             <summary class="cursor-pointer list-none font-extrabold text-indigo-600">Manage</summary>
                             <div class="fixed inset-0 z-40 bg-slate-950/30"></div>
                             <div class="fixed inset-x-4 top-6 z-50 mx-auto max-h-[90vh] max-w-4xl overflow-y-auto rounded-lg bg-white p-6 text-left shadow-2xl">
+
+                                {{-- Modal header --}}
                                 <div class="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                                     <div>
-                                        <h2 class="text-lg font-extrabold">{{ $order->order_number }}</h2>
-                                        <p class="text-sm font-medium text-slate-500">Ordered by {{ $userName }}</p>
+                                        <h2 class="text-lg font-extrabold">
+                                            @if (str_starts_with($order->order_number, 'POS-'))
+                                                Kiosk-{{ $order->id }}
+                                            @else
+                                                {{ $order->order_number }}
+                                            @endif
+                                        </h2>
+                                        <p class="text-sm font-medium text-slate-500">Customer: {{ $customerLabel }}</p>
                                     </div>
                                     <div class="flex items-center gap-2">
+                                        <a href="{{ route('orders.receipt', $order) }}?print=1" target="_blank" class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-extrabold text-slate-700 shadow-xs hover:bg-slate-50 hover:border-slate-300 transition">
+                                            <svg class="h-3.5 w-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                            </svg>
+                                            Print Receipt
+                                        </a>
                                         <span data-order-status class="rounded-full px-3 py-1 text-xs font-extrabold {{ $statusClass[$order->status] ?? 'bg-slate-100 text-slate-600' }}">{{ $order->status }}</span>
-                                        <button type="button" onclick="this.closest('details').open=false" class="grid h-8 w-8 place-items-center rounded-lg bg-slate-100 font-extrabold text-slate-500" title="Close">&times;</button>
+                                        <button type="button" onclick="this.closest('details').open=false" class="grid h-8 w-8 place-items-center rounded-lg bg-slate-100 font-extrabold text-slate-500 hover:bg-slate-200" title="Close">&times;</button>
                                     </div>
                                 </div>
 
+                                {{-- Order items and sidebar --}}
                                 <div class="grid gap-5 lg:grid-cols-[1fr_20rem]">
+
+                                    {{-- Left side: order items --}}
                                     <div>
                                         <div class="mb-3 flex items-center justify-between">
                                             <h3 class="text-sm font-extrabold text-slate-700">Order Items</h3>
@@ -146,16 +240,22 @@
                                         </div>
                                     </div>
 
+                                    {{-- Right side: customer info and status update --}}
                                     <div class="space-y-4">
+
+                                        {{-- Customer and order info --}}
                                         <div class="rounded-lg bg-slate-50 p-4">
                                             <p class="text-xs font-extrabold uppercase text-slate-400">Purchase For</p>
                                             <p class="mt-2 font-bold text-indigo-700">{{ $studentLabel }}</p>
-                                            <p class="mt-3 text-xs font-extrabold uppercase text-slate-400">Parent Account</p>
-                                            <p class="mt-1 font-bold">{{ $userName }}</p>
+                                            <p class="mt-3 text-xs font-extrabold uppercase text-slate-400">Customer</p>
+                                            <p class="mt-1 font-bold">{{ $customerLabel }}</p>
+                                            <p class="mt-3 text-xs font-extrabold uppercase text-slate-400">Payment Method</p>
+                                            <p class="mt-1 font-bold">{{ $paymentMethod }}</p>
                                             <p class="text-sm text-slate-500">{{ $order->user?->phone_number ?: $order->customer?->phone }} &middot; {{ $order->user?->email ?: $order->customer?->email }}</p>
                                             <p class="mt-2 text-sm text-slate-500">{{ $order->customer?->address }}</p>
                                         </div>
 
+                                        {{-- Status update form --}}
                                         <form data-status-form method="POST" action="{{ route('orders.updateStatus', $order) }}" class="rounded-lg bg-slate-50 p-4">
                                             @csrf @method('PATCH')
                                             <label class="text-xs font-extrabold uppercase text-slate-400">Update Status
@@ -173,15 +273,21 @@
                                     </div>
                                 </div>
 
+                                {{-- Payment summary and status history --}}
                                 <div class="mt-5 grid gap-5 lg:grid-cols-2">
+
+                                    {{-- Payment summary --}}
                                     <div class="rounded-lg ring-1 ring-slate-100">
                                         <div class="border-b border-slate-100 p-3 text-sm font-extrabold text-slate-500">Payment Summary</div>
                                         <div class="p-3 text-sm">
                                             <p>Total: <span class="font-extrabold">RM {{ number_format($order->total_amount, 2) }}</span></p>
                                             <p>Paid: <span class="font-extrabold">RM {{ number_format($order->completed_payments_total ?? 0, 2) }}</span></p>
+                                            <p>Method: <span class="font-extrabold">{{ $paymentMethod }}</span></p>
                                             <p>Status: <span class="font-extrabold">{{ $order->payment_status }}</span></p>
                                         </div>
                                     </div>
+
+                                    {{-- Status history --}}
                                     <div class="rounded-lg ring-1 ring-slate-100">
                                         <div class="border-b border-slate-100 p-3 text-sm font-extrabold text-slate-500">Status History</div>
                                         <div data-status-history class="max-h-44 overflow-y-auto p-3 text-sm">
@@ -195,6 +301,7 @@
                                 </div>
                             </div>
                         </details>
+                        @endif
                     </td>
                 </tr>
             @empty
@@ -239,49 +346,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (select && (forceFormUpdate || form.dataset.edited !== 'true')) {
             select.value = status;
         }
-    }
-
-    function updatePayment(row, status) {
-        row.querySelectorAll('[data-order-payment]').forEach((badge) => {
-            badge.classList.remove('bg-emerald-50', 'text-emerald-700', 'bg-slate-100', 'text-slate-600');
-            badge.classList.add(...(status === 'Paid'
-                ? ['bg-emerald-50', 'text-emerald-700']
-                : ['bg-slate-100', 'text-slate-600']));
-            badge.textContent = status;
-        });
-    }
-
-    function addNewOrder(order) {
-        if (document.querySelector(`[data-order-row="${order.id}"]`)) {
-            return;
-        }
-
-        const tbody = document.querySelector('tbody');
-        if (!tbody) return;
-
-        const emptyRow = tbody.querySelector('td[colspan="7"]')?.closest('tr');
-        emptyRow?.remove();
-
-        const row = document.createElement('tr');
-        row.dataset.orderRow = order.id;
-        row.className = 'align-top bg-emerald-50/40';
-        row.innerHTML = `
-            <td class="py-4 pr-4"><p class="font-extrabold text-slate-900"></p><p class="text-xs font-bold text-slate-400"></p></td>
-            <td class="py-4 pr-4"><p class="font-bold text-slate-700"></p></td>
-            <td class="py-4 pr-4 font-semibold text-slate-600">New purchase</td>
-            <td class="py-4 pr-4 font-extrabold"></td>
-            <td class="py-4 pr-4"><span data-order-payment class="rounded-full px-3 py-1 text-xs font-extrabold"></span></td>
-            <td class="py-4 pr-4"><span data-order-status class="rounded-full px-3 py-1 text-xs font-extrabold"></span></td>
-            <td class="py-4 text-right text-xs font-bold text-emerald-600">New kiosk order</td>`;
-
-        const cells = row.querySelectorAll('td');
-        cells[0].querySelector('p').textContent = order.order_number;
-        cells[0].querySelectorAll('p')[1].textContent = order.created_at;
-        cells[1].querySelector('p').textContent = order.user;
-        cells[3].textContent = `RM ${Number(order.total).toFixed(2)}`;
-        tbody.prepend(row);
-        updateStatus(row, order.status);
-        updatePayment(row, order.payment_status);
     }
 
     function addHistory(row, history) {
@@ -382,11 +446,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const row = document.querySelector(`[data-order-row="${order.id}"]`);
                 if (row) {
                     updateStatus(row, order.status);
-                    updatePayment(row, order.payment_status);
                 }
             });
-
-            data.new_orders?.reverse().forEach(addNewOrder);
         } catch {
             // The next poll will retry if the connection is temporarily unavailable.
         } finally {

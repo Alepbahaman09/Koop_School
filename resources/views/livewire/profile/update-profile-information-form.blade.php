@@ -1,7 +1,9 @@
 <?php
 
 use App\Models\Admin;
+use App\Services\SupabaseAuth;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\Rule;
 use Livewire\Volt\Component;
@@ -29,13 +31,32 @@ new class extends Component
 
         $validated = $this->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique(Admin::class)->ignore($user->id)],
+            'email' => [
+                'required',
+                'string',
+                'lowercase',
+                'email',
+                'max:255',
+                Rule::unique(Admin::class)->ignore($user->id),
+                function ($attribute, $value, $fail) {
+                    $domain = strtolower((string) substr(strrchr($value, '@'), 1));
+                    $dummyDomains = ['example.com', 'koop.school', 'test.com', 'dummy.com', 'sample.com'];
+                    if (in_array($domain, $dummyDomains, true)) {
+                        $fail('Please enter a real email address, not a placeholder or dummy domain.');
+                    }
+                },
+            ],
         ]);
 
-        $user->fill($validated);
+        $user->name = $validated['name'];
+        $user->email = $validated['email'];
+        $user->email_verified_at = now();
 
-        if ($user->isDirty('email')) {
-            $user->email_verified_at = null;
+        // Sync with the authentication user in Supabase Auth
+        try {
+            app(SupabaseAuth::class)->syncAdminEmail($user, $validated['email']);
+        } catch (\Throwable $e) {
+            Log::warning('Unable to sync admin email with Supabase Auth: ' . $e->getMessage());
         }
 
         $user->save();

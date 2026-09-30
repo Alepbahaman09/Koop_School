@@ -4,7 +4,6 @@
 @section('page-title', 'Purchase Order ' . $purchaseOrder->po_number)
 
 @section('content')
-@include('partials.admin-alerts')
 
 <section class="max-w-4xl mx-auto space-y-6">
     <div class="flex items-center justify-between">

@@ -12,13 +12,35 @@ function dismissToast(toast) {
     window.setTimeout(() => toast.remove(), 300);
 }
 
+let lastToastMessage = '';
+let lastToastTimestamp = 0;
+
 window.showToast = function (message, type = 'success', target = null) {
+    if (! message) {
+        return;
+    }
+
     const container = target ?? document.querySelector('[data-toast-container]');
     const template = document.querySelector(`[data-toast-template="${type}"]`);
 
     if (! container || ! template) {
         return;
     }
+
+    // Prevent identical toast messages within 2.5 seconds
+    const now = Date.now();
+    if (message === lastToastMessage && now - lastToastTimestamp < 2500) {
+        return;
+    }
+
+    // Check if an existing toast with identical message is currently displayed
+    const existingMessages = Array.from(container.querySelectorAll('[data-toast-message]')).map(el => el.textContent.trim());
+    if (existingMessages.includes(message.trim())) {
+        return;
+    }
+
+    lastToastMessage = message;
+    lastToastTimestamp = now;
 
     const toast = template.content.firstElementChild.cloneNode(true);
     toast.querySelector('[data-toast-message]').textContent = message;
@@ -262,10 +284,16 @@ function setupExpiredBannerCleanup(bannerList) {
 }
 
 function setupRealtimeNotifications(listener) {
+    if (listener.dataset.realtimeInitialized === 'true') {
+        return;
+    }
+    listener.dataset.realtimeInitialized = 'true';
+
     const changesUrl = listener.dataset.changesUrl;
     const supabaseUrl = listener.dataset.supabaseUrl;
     const supabaseKey = listener.dataset.supabaseKey;
     const badge = listener.querySelector('[data-notification-badge]');
+    const shownNotificationIds = new Set();
     let latestId = Number(listener.dataset.latestId || 0);
     let requestInProgress = false;
     let refreshQueued = false;
@@ -319,6 +347,11 @@ function setupRealtimeNotifications(listener) {
         badge.classList.toggle('hidden', unreadCount === 0);
 
         changes.notifications.forEach((notification) => {
+            if (shownNotificationIds.has(notification.id)) {
+                return;
+            }
+            shownNotificationIds.add(notification.id);
+
             window.showToast(
                 `${notification.title}: ${notification.message}`,
                 notification.severity,

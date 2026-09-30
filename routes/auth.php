@@ -10,9 +10,8 @@ Route::middleware('guest')->group(function () {
     Volt::route('login', 'pages.auth.login')
         ->name('login');
 
-    // Admin self-registration is intentionally disabled. Admin accounts are
-    // provisioned by an authorized operator instead of through a public page.
-    // Volt::route('register', 'pages.auth.register')->name('register');
+    Volt::route('register', 'pages.auth.register')
+        ->name('register');
 
     Volt::route('forgot-password', 'pages.auth.forgot-password')
         ->name('password.request');

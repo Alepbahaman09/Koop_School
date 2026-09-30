@@ -344,6 +344,7 @@ class CashierController extends Controller
 
         $items = $order->orderItems->map(fn ($item) => [
             'name' => $item->product->name ?? '—',
+            'size' => $item->size,
             'qty' => $item->quantity,
             'unit_price' => (float) $item->unit_price,
             'subtotal' => (float) $item->subtotal,

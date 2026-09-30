@@ -4,7 +4,6 @@
 @section('page-title', 'Goods Receipts')
 
 @section('content')
-@include('partials.admin-alerts')
 
 {{-- Page Header --}}
 <section class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

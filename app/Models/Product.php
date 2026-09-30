@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Storage;
 
 class Product extends Model
 {
-    protected $fillable = ['category_id', 'supplier_id', 'sku', 'name', 'description', 'price', 'cost_price', 'unit', 'purchase_unit', 'units_per_carton', 'stock_quantity', 'min_stock_level', 'image'];
+    protected $fillable = ['category_id', 'supplier_id', 'sku', 'name', 'description', 'price', 'cost_price', 'unit', 'purchase_unit', 'units_per_carton', 'stock_quantity', 'min_stock_level', 'image', 'is_active'];
 
     protected function casts(): array
     {
@@ -16,6 +16,7 @@ class Product extends Model
             'cost_price' => 'decimal:2',
             'stock_quantity' => 'integer',
             'min_stock_level' => 'integer',
+            'is_active' => 'boolean',
         ];
     }
 

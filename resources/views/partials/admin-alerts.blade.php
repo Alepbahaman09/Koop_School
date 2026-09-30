@@ -1,3 +1,4 @@
+@once
 <div data-toast-container class="pointer-events-none fixed right-4 top-4 z-[100] flex w-[calc(100%-2rem)] max-w-lg flex-col gap-3 sm:right-6 sm:top-6"></div>
 
 <template data-toast-template="success">
@@ -23,3 +24,4 @@
 @if (session('error') || ($errors->any() && !old('_category_form')))
     <div data-initial-toast data-type="error" data-message="{{ session('error') ?? $errors->first() }}"></div>
 @endif
+@endonce

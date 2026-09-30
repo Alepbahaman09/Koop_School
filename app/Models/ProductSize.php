@@ -10,12 +10,13 @@ class ProductSize extends Model
         'XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL',
     ];
 
-    protected $fillable = ['product_id', 'size', 'stock_quantity'];
+    protected $fillable = ['product_id', 'size', 'stock_quantity', 'price'];
 
     protected function casts(): array
     {
         return [
             'stock_quantity' => 'integer',
+            'price'          => 'decimal:2',
         ];
     }
 

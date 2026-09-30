@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\Admin;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 class SupabaseAuth
@@ -73,6 +75,60 @@ class SupabaseAuth
         }
 
         return $authUserId;
+    }
+
+    public function updateAdminEmail(string $authUserId, string $newEmail): void
+    {
+        $newEmail = strtolower(trim($newEmail));
+        $response = $this->request(useServiceRole: true)->put('admin/users/'.$authUserId, [
+            'email' => $newEmail,
+            'email_confirm' => true,
+        ]);
+
+        $this->ensureSuccessful($response, 'Supabase could not update the admin email.');
+    }
+
+    public function updateAdminPasswordByAdminId(string $authUserId, string $password): void
+    {
+        $response = $this->request(useServiceRole: true)->put('admin/users/'.$authUserId, [
+            'password' => $password,
+        ]);
+
+        $this->ensureSuccessful($response, 'Supabase could not update the admin password.');
+    }
+
+    public function syncAdminEmail(Admin $admin, string $newEmail): void
+    {
+        $newEmail = strtolower(trim($newEmail));
+
+        if ($admin->auth_user_id) {
+            $this->updateAdminEmail($admin->auth_user_id, $newEmail);
+        } else {
+            $existing = collect($this->adminUsers())
+                ->first(fn (array $u) => strtolower((string) ($u['email'] ?? '')) === $newEmail);
+
+            if ($existing) {
+                $admin->auth_user_id = $existing['id'];
+            } else {
+                $authUserId = $this->upsertAdminIdentity($newEmail, Str::random(24), $admin->name);
+                $admin->auth_user_id = $authUserId;
+            }
+        }
+    }
+
+    public function generateRecoveryLink(string $email, string $redirectUrl): ?string
+    {
+        $response = $this->request(useServiceRole: true)->post('admin/generate_link', [
+            'type' => 'recovery',
+            'email' => strtolower(trim($email)),
+            'options' => [
+                'redirect_to' => $redirectUrl,
+            ],
+        ]);
+
+        $this->ensureSuccessful($response, 'Supabase could not generate a password recovery link.');
+
+        return $response->json('action_link');
     }
 
     private function adminUsers(): array

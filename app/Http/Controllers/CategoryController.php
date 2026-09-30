@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use App\Models\Product;
+use App\Models\ProductActivityLog;
 use App\Services\SupabaseStorage;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class CategoryController extends Controller
@@ -36,7 +39,15 @@ class CategoryController extends Controller
 
         unset($validated['icon']);
         $validated['is_active'] = $request->boolean('is_active');
-        Category::create($validated);
+        $category = Category::create($validated);
+
+        ProductActivityLog::log(
+            'created',
+            'category',
+            $category->id,
+            $category->name,
+            'Created new category: ' . $category->name
+        );
 
         return to_route('products.index', ['categories' => 1])->with('category_success', 'Category created successfully.');
     }
@@ -62,22 +73,46 @@ class CategoryController extends Controller
         $validated['is_active'] = $request->boolean('is_active');
         $category->update($validated);
 
-        if ($request->hasFile('icon')) {
+        if ($request->hasFile('icon') && $oldIcon) {
             $this->storage->deletePublicFile($oldIcon, self::ICON_BUCKET);
         }
+
+        ProductActivityLog::log(
+            'updated',
+            'category',
+            $category->id,
+            $category->name,
+            'Updated category: ' . $category->name . ' (Visible: ' . ($category->is_active ? 'Yes' : 'No') . ')'
+        );
 
         return to_route('products.index', ['categories' => 1])->with('category_success', 'Category updated successfully.');
     }
 
     public function destroy(Category $category)
     {
-        if ($category->products()->exists()) {
-            return to_route('products.index', ['categories' => 1])->with('category_error', 'Move or delete the products in this category before deleting it.');
-        }
+        DB::transaction(function () use ($category) {
+            // Instantly move all items in this category to uncategorised
+            $affectedCount = Product::where('category_id', $category->id)->count();
+            Product::where('category_id', $category->id)->update(['category_id' => null]);
 
-        $this->storage->deletePublicFile($category->icon_url, self::ICON_BUCKET);
-        $category->delete();
+            if ($category->icon_url) {
+                $this->storage->deletePublicFile($category->icon_url, self::ICON_BUCKET);
+            }
 
-        return to_route('products.index', ['categories' => 1])->with('category_success', 'Category deleted successfully.');
+            $categoryName = $category->name;
+            $categoryId = $category->id;
+            $category->delete();
+
+            ProductActivityLog::log(
+                'deleted',
+                'category',
+                $categoryId,
+                $categoryName,
+                "Deleted category '{$categoryName}'. {$affectedCount} product(s) moved to Uncategorised."
+            );
+        });
+
+        return to_route('products.index', ['categories' => 1])
+            ->with('category_success', 'Category deleted instantly. Associated items have been moved to Uncategorised.');
     }
 }

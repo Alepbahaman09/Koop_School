@@ -24,6 +24,8 @@ Route::get('dashboard', [DashboardController::class, 'index'])
 Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('products', [ProductController::class, 'index'])->name('products.index');
     Route::get('products/create', [ProductController::class, 'create'])->name('products.create');
+    Route::get('products/report/pdf', [ProductController::class, 'exportPdf'])->name('products.report.pdf');
+    Route::get('products/report/export', [ProductController::class, 'exportReport'])->name('products.report.export');
     Route::post('products', [ProductController::class, 'store'])->name('products.store');
     Route::get('products/{product}/edit', [ProductController::class, 'edit'])->name('products.edit');
     Route::patch('products/{product}', [ProductController::class, 'update'])->name('products.update');
@@ -36,6 +38,7 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
 
     Route::get('orders', [OrderController::class, 'index'])->name('orders.index');
     Route::get('orders/snapshot', [OrderController::class, 'snapshot'])->name('orders.snapshot');
+    Route::get('orders/{order}/receipt', [OrderController::class, 'receipt'])->name('orders.receipt');
     Route::patch('orders/{order}/status', [OrderController::class, 'updateStatus'])->name('orders.updateStatus');
     Route::delete('orders/{order}', [OrderController::class, 'destroy'])->name('orders.destroy');
 
@@ -47,10 +50,12 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::post('orders/{order}/pay/nfc', [PaymentController::class, 'processNfcPayment'])->name('orders.pay.nfc');
     Route::post('orders/{order}/pay/cash', [PaymentController::class, 'processCashPayment'])->name('orders.pay.cash');
     Route::get('financial-report', [FinancialReportController::class, 'index'])->name('financial-report');
-    Route::get('financial-report/export', [FinancialReportController::class, 'export'])->name('financial-report.export');
+    Route::get('financial-report/pdf', [FinancialReportController::class, 'exportPdf'])->name('financial-report.pdf');
     Route::redirect('finance', '/financial-report');
-    Route::redirect('finance/export', '/financial-report/export');
 
+    Route::get('suppliers/report/pdf', [SupplierController::class, 'exportPdf'])->name('suppliers.report.pdf');
+    Route::get('suppliers/report/export', [SupplierController::class, 'exportReport'])->name('suppliers.report.export');
+    Route::post('suppliers/store-with-purchase', [SupplierController::class, 'storeWithPurchase'])->name('suppliers.store-with-purchase');
     Route::resource('suppliers', SupplierController::class)->except(['create', 'edit', 'show']);
     Route::post('stock-purchases/product-inline', [StockPurchaseController::class, 'storeProductInline'])->name('stock-purchases.product-inline');
     Route::post('stock-purchases/{stock_purchase}/receive', [StockPurchaseController::class, 'markAsReceived'])->name('stock-purchases.receive');
@@ -78,6 +83,5 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
 });
 
 Route::redirect('analytics', '/financial-report')->middleware(['auth', 'verified', 'admin'])->name('analytics');
-Route::redirect('analytics/export', '/financial-report/export')->middleware(['auth', 'verified', 'admin'])->name('analytics.export');
 
 require __DIR__.'/auth.php';

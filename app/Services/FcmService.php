@@ -57,7 +57,12 @@ class FcmService
 
         $tokens = DB::table('fcm_devices')
             ->where('user_id', $notification->user_id)
-            ->pluck('token');
+            ->orderByDesc('last_seen_at')
+            ->get(['token', 'platform'])
+            ->unique('platform')
+            ->pluck('token')
+            ->filter()
+            ->values();
 
         if ($tokens->isEmpty()) {
             return;
