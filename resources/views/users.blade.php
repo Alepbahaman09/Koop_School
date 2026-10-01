@@ -153,7 +153,10 @@
                                             @forelse ($user->orders as $order)
                                                 @php
                                                     $isKioskOrder = str_starts_with($order->order_number, 'POS-')
-                                                        || ($order->relationLoaded('terminalPayments') && $order->terminalPayments->isNotEmpty());
+                                                        || str_starts_with($order->order_number, 'KIOSK-')
+                                                        || ($order->relationLoaded('terminalPayments') && $order->terminalPayments->isNotEmpty())
+                                                        || str_contains(strtolower($order->notes ?? ''), 'pos')
+                                                        || str_contains(strtolower($order->notes ?? ''), 'kiosk');
                                                 @endphp
 
                                                 @if ($isKioskOrder)

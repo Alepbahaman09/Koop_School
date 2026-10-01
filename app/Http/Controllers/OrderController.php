@@ -13,7 +13,7 @@ class OrderController extends Controller
     public function index(Request $request)
     {
         $query = Order::query()
-            ->select(['id', 'order_number', 'customer_id', 'user_id', 'student_id', 'status', 'total_amount', 'payment_status', 'created_at'])
+            ->select(['id', 'order_number', 'customer_id', 'user_id', 'student_id', 'status', 'total_amount', 'payment_status', 'notes', 'created_at'])
             ->with([
                 'customer:id,parent_name,student_name,class,phone,email,address',
                 'user:id,name,username,email,phone_number',
@@ -59,9 +59,19 @@ class OrderController extends Controller
         }
 
         if ($request->search) {
-            $query->where(function ($q) use ($request) {
-                $q->where('order_number', 'like', '%'.$request->search.'%')
-                    ->orWhereHas('customer', function ($q2) use ($request) {
+            $search = trim($request->search);
+            $numericId = null;
+            if (preg_match('/^(?:kiosk[- ]?|cash[- ]?)?(\d+)$/i', $search, $matches)) {
+                $numericId = (int) $matches[1];
+            }
+
+            $query->where(function ($q) use ($request, $numericId) {
+                $q->where('order_number', 'like', '%'.$request->search.'%');
+                if ($numericId) {
+                    $q->orWhere('id', $numericId)
+                        ->orWhereHas('terminalPayments', fn ($tq) => $tq->where('id', $numericId));
+                }
+                $q->orWhereHas('customer', function ($q2) use ($request) {
                         $q2->where('parent_name', 'like', '%'.$request->search.'%')
                             ->orWhere('student_name', 'like', '%'.$request->search.'%');
                     })
@@ -190,6 +200,76 @@ class OrderController extends Controller
             }
 
             return back()->with('error', 'Failed to update order status.');
+        }
+    }
+
+    public function bulkUpdateStatus(Request $request)
+    {
+        $validated = $request->validate([
+            'order_ids' => ['required', 'array', 'min:1'],
+            'order_ids.*' => ['required', 'integer', 'exists:orders,id'],
+            'status' => ['required', Rule::in(Order::STATUSES)],
+            'notes' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        try {
+            $targetStatus = $validated['status'];
+            $notes = $validated['notes'] ?? ('Bulk update to '.$targetStatus);
+            $adminId = auth()->id();
+            $updatedOrderIds = [];
+
+            DB::transaction(function () use ($validated, $targetStatus, $notes, $adminId, &$updatedOrderIds) {
+                $orders = Order::with('terminalPayments')->whereIn('id', $validated['order_ids'])->get();
+
+                foreach ($orders as $order) {
+                    $isKiosk = $order->terminalPayments->isNotEmpty()
+                        || str_starts_with($order->order_number, 'POS-')
+                        || str_starts_with($order->order_number, 'KIOSK-')
+                        || str_contains(strtolower($order->notes ?? ''), 'pos')
+                        || str_contains(strtolower($order->notes ?? ''), 'kiosk');
+
+                    if ($isKiosk) {
+                        continue;
+                    }
+
+                    if ($order->status !== $targetStatus) {
+                        $order->update(['status' => $targetStatus]);
+                        $updatedOrderIds[] = $order->id;
+
+                        OrderStatusHistory::create([
+                            'order_id' => $order->id,
+                            'admin_id' => $adminId,
+                            'status' => $targetStatus,
+                            'notes' => $notes,
+                        ]);
+                    }
+                }
+            });
+
+            $count = count($updatedOrderIds);
+            $message = $count > 0
+                ? "{$count} order(s) updated to {$targetStatus}."
+                : "Selected order(s) are already {$targetStatus}.";
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => $message,
+                    'status' => $targetStatus,
+                    'updated_ids' => $updatedOrderIds,
+                    'count' => $count,
+                    'stats' => $this->orderStats(),
+                ]);
+            }
+
+            return back()->with('success', $message);
+        } catch (\Exception $e) {
+            report($e);
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Failed to update selected orders.'], 500);
+            }
+
+            return back()->with('error', 'Failed to update selected orders.');
         }
     }
 

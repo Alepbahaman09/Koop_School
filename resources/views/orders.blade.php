@@ -81,10 +81,46 @@
         </div>
     </form>
 
+    {{-- Bulk Action Banner (appears when orders are selected) --}}
+    <div id="bulkBanner" class="hidden mb-4 rounded-xl border border-indigo-100 bg-indigo-50/70 p-3.5 text-indigo-950 shadow-xs transition-all">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <span class="inline-flex h-7 items-center justify-center rounded-md bg-indigo-600 px-2.5 text-xs font-black text-white">
+                    <span id="bulkBannerCount">0</span>&nbsp;selected
+                </span>
+                <p class="text-sm font-bold text-indigo-950">Assign status to selected orders:</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <div class="hidden md:flex items-center gap-1.5 mr-1">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Quick:</span>
+                    <button type="button" data-bulk-quick="Ready" class="bulk-quick-btn h-8 rounded-md bg-violet-100 px-2.5 text-xs font-extrabold text-violet-700 hover:bg-violet-200 transition">Ready</button>
+                    <button type="button" data-bulk-quick="Completed" class="bulk-quick-btn h-8 rounded-md bg-emerald-100 px-2.5 text-xs font-extrabold text-emerald-700 hover:bg-emerald-200 transition">Complete</button>
+                    <button type="button" data-bulk-quick="Processing" class="bulk-quick-btn h-8 rounded-md bg-sky-100 px-2.5 text-xs font-extrabold text-sky-700 hover:bg-sky-200 transition">Processing</button>
+                    <button type="button" data-bulk-quick="Cancelled" class="bulk-quick-btn h-8 rounded-md bg-rose-100 px-2.5 text-xs font-extrabold text-rose-700 hover:bg-rose-200 transition">Cancel</button>
+                </div>
+                <select id="bulkStatusSelectTop" class="h-9 rounded-lg border-indigo-200 bg-white px-3 text-xs font-bold text-slate-800 focus:border-indigo-500 focus:ring-indigo-500">
+                    <option value="" disabled selected>Choose status...</option>
+                    @foreach ($statuses as $status)
+                        <option value="{{ $status }}">{{ $status }}</option>
+                    @endforeach
+                </select>
+                <button type="button" class="bulk-apply-btn inline-flex h-9 items-center justify-center rounded-lg bg-indigo-600 px-4 text-xs font-black text-white shadow-xs hover:bg-indigo-700 active:scale-95 transition">
+                    Assign
+                </button>
+                <button type="button" class="bulk-clear-btn inline-flex h-9 items-center justify-center rounded-lg border border-indigo-200 bg-white px-3 text-xs font-bold text-indigo-700 hover:bg-indigo-100/60 active:scale-95 transition">
+                    Clear
+                </button>
+            </div>
+        </div>
+    </div>
+
     {{-- Orders table --}}
     <div class="overflow-x-auto">
         <table class="w-full min-w-[1050px] text-left text-sm">
             <thead><tr class="border-b border-slate-100 text-xs font-extrabold uppercase text-slate-400">
+                <th class="w-10 py-3 pl-4 pr-2 text-center">
+                    <input type="checkbox" id="selectAllOrders" class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" title="Select all online orders">
+                </th>
                 <th class="py-3 pr-4">Order</th><th class="py-3 pr-4">Customer</th><th class="py-3 pr-4">Items</th>
                 <th class="py-3 pr-4">Total</th><th class="py-3 pr-4">Payment</th><th class="py-3 pr-4">Status</th><th class="py-3 pr-4">Action</th>
             </tr></thead>
@@ -96,8 +132,13 @@
                     $regularPayment = $order->payments->first();
 
                     if ($terminalPayment && $terminalPayment->payment_method === 'Cash') {
-                        // Kiosk POS cash sale — show "Cash-{payment id}"
-                        $customerLabel = 'Cash-' . $terminalPayment->id;
+                        // Kiosk POS cash sale
+                        $cashUserName = $terminalPayment->user?->name
+                            ?? $terminalPayment->user?->username
+                            ?? $order->user?->name
+                            ?? $order->user?->username
+                            ?? ($order->customer && $order->customer->parent_name !== 'Walk-in Parent' ? $order->customer->parent_name : null);
+                        $customerLabel = $cashUserName ? ($cashUserName . ' - Cash') : ('Cash-' . $terminalPayment->id);
                         $paymentMethod = 'Cash';
 
                     } elseif ($terminalPayment && $terminalPayment->payment_method === 'NFC Card') {
@@ -127,7 +168,7 @@
                         $paymentMethod = '-';
                     }
 
-                    $isKioskPayment = (bool) ($terminalPayment || str_starts_with($order->order_number, 'POS-') || in_array($paymentMethod, ['Cash', 'NFC'], true));
+                    $isKioskPayment = (bool) ($terminalPayment || str_starts_with($order->order_number, 'POS-') || str_starts_with($order->order_number, 'KIOSK-') || in_array($paymentMethod, ['Cash', 'NFC'], true) || str_contains(strtolower($order->notes ?? ''), 'pos') || str_contains(strtolower($order->notes ?? ''), 'kiosk'));
 
                     // For the detail panel sidebar
                     $studentLabel = $order->student?->name
@@ -142,11 +183,22 @@
                         ?? $order->customer?->parent_name
                         ?? 'Unknown user';
                 @endphp
-                <tr data-order-row="{{ $order->id }}" class="align-top">
+                <tr data-order-row="{{ $order->id }}" class="align-top transition-colors">
+
+                    {{-- Row selection checkbox (online payments only; kiosk payments disabled) --}}
+                    @if (! $isKioskPayment)
+                        <td data-select-cell class="w-10 py-4 pl-4 pr-2 text-center cursor-pointer">
+                            <input type="checkbox" class="order-select-checkbox h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" value="{{ $order->id }}">
+                        </td>
+                    @else
+                        <td class="w-10 py-4 pl-4 pr-2 text-center">
+                            <input type="checkbox" disabled class="h-4 w-4 rounded border-slate-200 bg-slate-100 text-slate-300 opacity-40 cursor-not-allowed" title="Disabled for kiosk orders">
+                        </td>
+                    @endif
 
                     {{-- Order number and date --}}
                     <td class="py-4 pr-4">
-                        @if (str_starts_with($order->order_number, 'POS-'))
+                        @if ($isKioskPayment || str_starts_with($order->order_number, 'POS-') || str_starts_with($order->order_number, 'KIOSK-'))
                             <p class="font-extrabold text-slate-900">Kiosk-{{ $order->id }}</p>
                         @else
                             <p class="font-extrabold text-slate-900">{{ $order->order_number }}</p>
@@ -185,7 +237,7 @@
                                 <div class="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                                     <div>
                                         <h2 class="text-lg font-extrabold">
-                                            @if (str_starts_with($order->order_number, 'POS-'))
+                                            @if ($isKioskPayment || str_starts_with($order->order_number, 'POS-') || str_starts_with($order->order_number, 'KIOSK-'))
                                                 Kiosk-{{ $order->id }}
                                             @else
                                                 {{ $order->order_number }}
@@ -305,13 +357,45 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="7" class="py-12 text-center font-semibold text-slate-400">No orders match these filters.</td></tr>
+                <tr><td colspan="8" class="py-12 text-center font-semibold text-slate-400">No orders match these filters.</td></tr>
             @endforelse
             </tbody>
         </table>
     </div>
     <div class="mt-5">{{ $orders->links() }}</div>
 </section>
+
+{{-- Floating Bulk Actions Dock (visible when orders are selected and scrolled) --}}
+<div id="bulkFloatingBar" class="fixed bottom-6 inset-x-0 mx-auto w-fit max-w-[95vw] z-50 hidden transition-all duration-300">
+    <div class="flex flex-wrap items-center gap-3 rounded-2xl bg-slate-900/95 backdrop-blur-md px-5 py-3 text-white shadow-2xl ring-1 ring-white/10">
+        <div class="flex items-center gap-2 border-r border-slate-700/80 pr-3">
+            <span class="grid h-6 w-6 place-items-center rounded-full bg-indigo-500 text-xs font-black text-white" id="bulkFloatingCount">0</span>
+            <span class="text-sm font-bold text-slate-200">Selected</span>
+        </div>
+        <div class="hidden sm:flex items-center gap-1.5 border-r border-slate-700/80 pr-3">
+            <button type="button" data-bulk-quick="Ready" class="bulk-quick-btn h-8 rounded-lg bg-violet-500/20 text-violet-300 hover:bg-violet-500/30 px-2.5 text-xs font-extrabold transition">Ready</button>
+            <button type="button" data-bulk-quick="Completed" class="bulk-quick-btn h-8 rounded-lg bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 px-2.5 text-xs font-extrabold transition">Complete</button>
+            <button type="button" data-bulk-quick="Processing" class="bulk-quick-btn h-8 rounded-lg bg-sky-500/20 text-sky-300 hover:bg-sky-500/30 px-2.5 text-xs font-extrabold transition">Processing</button>
+            <button type="button" data-bulk-quick="Cancelled" class="bulk-quick-btn h-8 rounded-lg bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 px-2.5 text-xs font-extrabold transition">Cancel</button>
+        </div>
+        <div class="flex items-center gap-2">
+            <select id="bulkStatusSelectBottom" class="h-9 rounded-lg bg-slate-800 border-slate-700 text-xs font-extrabold text-white focus:border-indigo-500 focus:ring-indigo-500">
+                <option value="" disabled selected>Assign status...</option>
+                @foreach ($statuses as $status)
+                    <option value="{{ $status }}">{{ $status }}</option>
+                @endforeach
+            </select>
+            <button type="button" class="bulk-apply-btn inline-flex h-9 items-center gap-1.5 rounded-lg bg-indigo-600 px-4 text-xs font-black text-white shadow hover:bg-indigo-500 active:scale-95 transition">
+                Apply
+            </button>
+        </div>
+        <div class="border-l border-slate-700/80 pl-3">
+            <button type="button" class="bulk-clear-btn text-xs font-bold text-slate-400 hover:text-white transition">
+                Clear
+            </button>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -418,6 +502,246 @@ document.addEventListener('DOMContentLoaded', () => {
                 button.disabled = false;
                 button.textContent = originalText;
             }
+        });
+    });
+
+    // ─── Bulk Order Selection & Status Assignment ───
+    const bulkUrl = @json(route('orders.bulkUpdateStatus'));
+    const csrfToken = @json(csrf_token());
+
+    const selectAll = document.getElementById('selectAllOrders');
+    const banner = document.getElementById('bulkBanner');
+    const bannerCount = document.getElementById('bulkBannerCount');
+    const floatingBar = document.getElementById('bulkFloatingBar');
+    const floatingCount = document.getElementById('bulkFloatingCount');
+    const selectTop = document.getElementById('bulkStatusSelectTop');
+    const selectBottom = document.getElementById('bulkStatusSelectBottom');
+    const applyButtons = document.querySelectorAll('.bulk-apply-btn');
+    const clearButtons = document.querySelectorAll('.bulk-clear-btn');
+    const quickButtons = document.querySelectorAll('.bulk-quick-btn');
+
+    function getOrderCheckboxes() {
+        return [...document.querySelectorAll('.order-select-checkbox:not(:disabled)')];
+    }
+
+    function syncSelectionUI() {
+        const boxes = getOrderCheckboxes();
+        const checked = boxes.filter(cb => cb.checked);
+        const count = checked.length;
+        const total = boxes.length;
+
+        if (bannerCount) bannerCount.textContent = count;
+        if (floatingCount) floatingCount.textContent = count;
+
+        if (count > 0) {
+            banner?.classList.remove('hidden');
+            floatingBar?.classList.remove('hidden');
+        } else {
+            banner?.classList.add('hidden');
+            floatingBar?.classList.add('hidden');
+        }
+
+        if (selectAll) {
+            if (total === 0) {
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+                selectAll.disabled = true;
+                selectAll.classList.add('opacity-40', 'cursor-not-allowed');
+                selectAll.classList.remove('cursor-pointer');
+            } else {
+                selectAll.disabled = false;
+                selectAll.classList.remove('opacity-40', 'cursor-not-allowed');
+                selectAll.classList.add('cursor-pointer');
+                if (count === total) {
+                    selectAll.checked = true;
+                    selectAll.indeterminate = false;
+                } else if (count > 0) {
+                    selectAll.checked = false;
+                    selectAll.indeterminate = true;
+                } else {
+                    selectAll.checked = false;
+                    selectAll.indeterminate = false;
+                }
+            }
+        }
+
+        boxes.forEach(cb => {
+            const row = cb.closest('[data-order-row]');
+            if (row) {
+                if (cb.checked) {
+                    row.classList.add('bg-indigo-50/50');
+                } else {
+                    row.classList.remove('bg-indigo-50/50');
+                }
+            }
+        });
+    }
+
+    if (selectAll) {
+        selectAll.addEventListener('change', () => {
+            if (selectAll.disabled) return;
+            getOrderCheckboxes().forEach(cb => {
+                cb.checked = selectAll.checked;
+            });
+            syncSelectionUI();
+        });
+    }
+
+    let lastCheckedIndex = -1;
+    document.addEventListener('click', (e) => {
+        // Toggle if clicked directly on enabled checkbox
+        if (e.target.matches('.order-select-checkbox:not(:disabled)')) {
+            const boxes = getOrderCheckboxes();
+            const currentIndex = boxes.indexOf(e.target);
+            if (e.shiftKey && lastCheckedIndex !== -1 && lastCheckedIndex !== currentIndex) {
+                const start = Math.min(lastCheckedIndex, currentIndex);
+                const end = Math.max(lastCheckedIndex, currentIndex);
+                const checkState = e.target.checked;
+                for (let i = start; i <= end; i++) {
+                    boxes[i].checked = checkState;
+                }
+            }
+            lastCheckedIndex = currentIndex;
+            syncSelectionUI();
+            return;
+        }
+
+        // Toggle if clicked on cell area
+        const td = e.target.closest('td[data-select-cell]');
+        if (td && e.target.tagName !== 'INPUT') {
+            const cb = td.querySelector('.order-select-checkbox:not(:disabled)');
+            if (cb) {
+                cb.checked = !cb.checked;
+                syncSelectionUI();
+            }
+        }
+    });
+
+    // Run initial selection UI sync on page load
+    syncSelectionUI();
+
+    clearButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            getOrderCheckboxes().forEach(cb => cb.checked = false);
+            if (selectAll) {
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+            }
+            if (selectTop) selectTop.value = '';
+            if (selectBottom) selectBottom.value = '';
+            syncSelectionUI();
+        });
+    });
+
+    if (selectTop && selectBottom) {
+        selectTop.addEventListener('change', () => {
+            selectBottom.value = selectTop.value;
+        });
+        selectBottom.addEventListener('change', () => {
+            selectTop.value = selectBottom.value;
+        });
+    }
+
+    async function performBulkUpdate(targetStatus) {
+        const checked = getOrderCheckboxes().filter(cb => cb.checked);
+        const orderIds = checked.map(cb => parseInt(cb.value, 10)).filter(id => !isNaN(id));
+
+        if (orderIds.length === 0) {
+            window.showToast('Please select at least one order.', 'error');
+            return;
+        }
+
+        if (! targetStatus) {
+            window.showToast('Please choose a status to assign.', 'error');
+            return;
+        }
+
+        if (targetStatus === 'Cancelled') {
+            const confirmed = window.confirm(`Are you sure you want to mark ${orderIds.length} order(s) as Cancelled?`);
+            if (! confirmed) {
+                return;
+            }
+        }
+
+        applyButtons.forEach(btn => {
+            btn.disabled = true;
+            btn.dataset.originalText = btn.textContent;
+            btn.textContent = 'Updating...';
+        });
+
+        try {
+            const response = await fetch(bulkUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify({
+                    order_ids: orderIds,
+                    status: targetStatus,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (! response.ok) {
+                const validationMessage = data.errors
+                    ? Object.values(data.errors).flat()[0]
+                    : data.message;
+                throw new Error(validationMessage || 'Failed to update orders.');
+            }
+
+            // Update row status badges and selectors on the page
+            orderIds.forEach(id => {
+                const row = document.querySelector(`[data-order-row="${id}"]`);
+                if (row) {
+                    updateStatus(row, data.status, true);
+                }
+            });
+
+            // Update stats cards
+            if (data.stats) {
+                updateStats(data.stats);
+            }
+
+            // Uncheck and clear
+            getOrderCheckboxes().forEach(cb => cb.checked = false);
+            if (selectAll) {
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+            }
+            if (selectTop) selectTop.value = '';
+            if (selectBottom) selectBottom.value = '';
+            syncSelectionUI();
+
+            window.showToast(data.message || `Orders updated to ${data.status}.`);
+        } catch (error) {
+            window.showToast(error.message, 'error');
+        } finally {
+            applyButtons.forEach(btn => {
+                btn.disabled = false;
+                if (btn.dataset.originalText) {
+                    btn.textContent = btn.dataset.originalText;
+                }
+            });
+        }
+    }
+
+    applyButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const status = selectTop?.value || selectBottom?.value;
+            performBulkUpdate(status);
+        });
+    });
+
+    quickButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const status = btn.dataset.bulkQuick;
+            if (selectTop) selectTop.value = status;
+            if (selectBottom) selectBottom.value = status;
+            performBulkUpdate(status);
         });
     });
 

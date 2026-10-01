@@ -3,7 +3,12 @@
     $regularPayment = $order->payments->first();
 
     if ($terminalPayment && $terminalPayment->payment_method === 'Cash') {
-        $customerLabel = 'Cash-' . $terminalPayment->id;
+        $cashUserName = $terminalPayment->user?->name
+            ?? $terminalPayment->user?->username
+            ?? $order->user?->name
+            ?? $order->user?->username
+            ?? ($order->customer && $order->customer->parent_name !== 'Walk-in Parent' ? $order->customer->parent_name : null);
+        $customerLabel = $cashUserName ? ($cashUserName . ' - Cash') : ('Cash-' . $terminalPayment->id);
         $paymentMethod = 'Cash';
     } elseif ($terminalPayment && $terminalPayment->payment_method === 'NFC Card') {
         $nfcUserName = $terminalPayment->user?->name ?? $terminalPayment->user?->username ?? 'Unknown';
@@ -26,7 +31,13 @@
             ? $order->customer->student_name . ($order->customer->class && $order->customer->class !== '-' ? ' (' . $order->customer->class . ')' : '')
             : 'General / Walk-in');
 
-    $displayOrderId = str_starts_with($order->order_number, 'POS-') ? ('Kiosk-' . $order->id) : $order->order_number;
+    $isKioskOrder = (bool) ($terminalPayment
+        || str_starts_with($order->order_number, 'POS-')
+        || str_starts_with($order->order_number, 'KIOSK-')
+        || str_contains(strtolower($order->notes ?? ''), 'pos')
+        || str_contains(strtolower($order->notes ?? ''), 'kiosk'));
+
+    $displayOrderId = $isKioskOrder ? ('Kiosk-' . $order->id) : $order->order_number;
 @endphp
 <!DOCTYPE html>
 <html lang="en">

@@ -256,12 +256,13 @@ class DashboardController extends Controller
 
         // 6. Latest Orders
         $orders = Order::query()
-            ->select(['id', 'order_number', 'customer_id', 'user_id', 'status', 'total_amount', 'created_at'])
+            ->select(['id', 'order_number', 'customer_id', 'user_id', 'status', 'total_amount', 'notes', 'created_at'])
             ->with([
                 'customer:id,parent_name,student_name',
                 'user:id,name,username',
                 'orderItems:id,order_id,product_id,size,quantity',
                 'orderItems.product:id,name',
+                'terminalPayments:id,order_id,payment_method',
             ])
             ->latest()
             ->take(5)
@@ -276,13 +277,19 @@ class DashboardController extends Controller
                     $itemNames .= ' +'.($itemCount - 2).' more';
                 }
 
+                $isKioskOrder = str_starts_with($order->order_number, 'POS-')
+                    || str_starts_with($order->order_number, 'KIOSK-')
+                    || $order->terminalPayments->isNotEmpty()
+                    || str_contains(strtolower($order->notes ?? ''), 'pos')
+                    || str_contains(strtolower($order->notes ?? ''), 'kiosk');
+
                 $customerName = $order->customer?->parent_name
                     ?? $order->user?->name
                     ?? $order->user?->username
-                    ?? (str_starts_with($order->order_number, 'POS-') ? ('Kiosk-' . $order->id) : 'Walk-in');
+                    ?? ($isKioskOrder ? ('Kiosk-' . $order->id) : 'Walk-in');
 
                 return [
-                    'id' => str_starts_with($order->order_number, 'POS-') ? ('Kiosk-' . $order->id) : $order->order_number,
+                    'id' => $isKioskOrder ? ('Kiosk-' . $order->id) : $order->order_number,
                     'customer' => $customerName,
                     'item' => $itemNames ?: 'No items',
                     'status' => $order->status,

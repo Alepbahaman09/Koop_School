@@ -472,7 +472,11 @@ class FinancialReportController extends Controller
             ->get();
         foreach ($payments as $p) {
             if ($p->order) {
-                $orderId = str_starts_with((string) $p->order->order_number, 'POS-')
+                $isKiosk = str_starts_with((string) $p->order->order_number, 'POS-')
+                    || str_starts_with((string) $p->order->order_number, 'KIOSK-')
+                    || str_contains(strtolower($p->order->notes ?? ''), 'pos')
+                    || str_contains(strtolower($p->order->notes ?? ''), 'kiosk');
+                $orderId = $isKiosk
                     ? 'Kiosk-' . $p->order->id
                     : (string) ($p->order->order_number ?: $p->order->id);
             } else {
@@ -490,7 +494,7 @@ class FinancialReportController extends Controller
             ]);
         }
 
-        // Terminal Payments (POS Cashier)
+        // Terminal Payments (POS Cashier / Kiosk)
         $terminalPayments = TerminalPayment::with('order')
             ->where('status', 'Completed')
             ->whereBetween('paid_at', [$start, $end])
@@ -498,13 +502,7 @@ class FinancialReportController extends Controller
             ->take($fullAudit ? 250 : 60)
             ->get();
         foreach ($terminalPayments as $tp) {
-            if ($tp->order) {
-                $orderId = str_starts_with((string) $tp->order->order_number, 'POS-')
-                    ? 'Kiosk-' . $tp->order->id
-                    : (string) ($tp->order->order_number ?: $tp->order->id);
-            } else {
-                $orderId = $tp->order_id ? 'Kiosk-' . $tp->order_id : 'Kiosk-' . $tp->id;
-            }
+            $orderId = 'Kiosk-' . ($tp->order?->id ?: $tp->order_id ?: $tp->id);
 
             $auditList->push([
                 'timestamp' => $tp->paid_at ?? $tp->created_at,
