@@ -1,0 +1,14 @@
+System.ArgumentException: Parameter is not valid.
+   at Windows.Win32.Graphics.GdiPlus.StatusExtensions.ThrowIfFailed(Status status)
+   at System.Drawing.Imaging.Metafile..ctor(IntPtr referenceHdc, Rectangle frameRect, MetafileFrameUnit frameUnit, EmfType type, String desc)
+   at System.Drawing.Printing.PreviewPrintController.OnStartPage(PrintDocument document, PrintPageEventArgs e)
+   at System.Windows.Forms.PrintControllerWithStatusDialog.OnStartPage(PrintDocument document, PrintPageEventArgs e)
+   at System.Drawing.Printing.PrintController.PrintLoop(PrintDocument document)
+   at System.Drawing.Printing.PrintController.Print(PrintDocument document)
+   at System.Windows.Forms.PrintPreviewControl.ComputePreview()
+   at System.Windows.Forms.PrintPreviewControl.CalculatePageInfo()
+   at System.Windows.Forms.Control.InvokeMarshaledCallbackHelper(Object obj)
+   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+--- End of stack trace from previous location ---
+   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+   at System.Windows.Forms.Control.InvokeMarshaledCallbacks()

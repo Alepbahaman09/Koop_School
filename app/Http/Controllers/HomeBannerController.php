@@ -7,6 +7,7 @@ use App\Services\ExpiredHomeBannerCleanup;
 use App\Services\SupabaseStorage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class HomeBannerController extends Controller
 {
@@ -17,7 +18,10 @@ class HomeBannerController extends Controller
 
     public function index()
     {
-        $this->expiredBannerCleanup->run();
+        if (! Cache::has('home_banners.cleanup_checked')) {
+            $this->expiredBannerCleanup->run();
+            Cache::put('home_banners.cleanup_checked', true, 1800);
+        }
 
         $banners = HomeBanner::latest()
             ->paginate(12);

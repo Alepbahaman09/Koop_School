@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\ProductActivityLog;
 use App\Services\SupabaseStorage;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
@@ -49,6 +50,8 @@ class CategoryController extends Controller
             'Created new category: ' . $category->name
         );
 
+        $this->clearCategoryCaches();
+
         return to_route('products.index', ['categories' => 1])->with('category_success', 'Category created successfully.');
     }
 
@@ -85,6 +88,8 @@ class CategoryController extends Controller
             'Updated category: ' . $category->name . ' (Visible: ' . ($category->is_active ? 'Yes' : 'No') . ')'
         );
 
+        $this->clearCategoryCaches();
+
         return to_route('products.index', ['categories' => 1])->with('category_success', 'Category updated successfully.');
     }
 
@@ -112,7 +117,21 @@ class CategoryController extends Controller
             );
         });
 
-        return to_route('products.index', ['categories' => 1])
+        $this->clearCategoryCaches();
+
+        return to_route('products.index', ['categories' => 1]);
+    }
+
+    private function clearCategoryCaches(): void
+    {
+        Cache::forget('products.stats_summary_v2');
+        Cache::forget('products.active_categories_v2');
+        Cache::forget('products.all_categories_v2');
+        Cache::forget('products.uncategorized_count_v2');
+        Cache::forget('products.report_modal_html_v2');
+        Cache::forget('suppliers.stats_summary_v2');
+        Cache::forget('suppliers.drawer_categories_v1');
+    }
             ->with('category_success', 'Category deleted instantly. Associated items have been moved to Uncategorised.');
     }
 }

@@ -59,7 +59,7 @@
                             {{ $purchase->supplier->company_name }}
                         </td>
                         <td class="px-5 py-4 text-slate-600 font-semibold">
-                            {{ $purchase->purchase_date->format('d M Y') }}
+                            {{ $purchase->purchase_date?->format('d M Y') ?? ($purchase->created_at?->format('d M Y') ?? '—') }}
                         </td>
                         <td class="px-5 py-4 font-bold text-slate-800">
                             RM {{ number_format($purchase->total_amount, 2) }}

@@ -12,6 +12,7 @@ use App\Models\StockPurchaseItem;
 use App\Models\Supplier;
 use App\Services\SupabaseStorage;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -26,33 +27,64 @@ class SupplierController extends Controller
      */
     public function index(Request $request)
     {
-        // Overview statistics
-        $supplierStats = [
-            'total_suppliers' => Supplier::count(),
-            'total_purchases' => StockPurchase::count(),
-            'total_spent'     => (float) StockPurchase::sum('total_amount'),
-        ];
+        // 1. Overview statistics (cached as pure primitive array)
+        $supplierStats = Cache::remember('suppliers.stats_summary_v2', 120, function () {
+            return [
+                'total_suppliers' => (int) Supplier::count(),
+                'total_purchases' => (int) StockPurchase::count(),
+                'total_spent'     => (float) StockPurchase::sum('total_amount'),
+            ];
+        });
 
-        $allSuppliersReport = Supplier::with(['stockPurchases.items.product.category', 'stockPurchases.items.product.sizes'])->orderBy('company_name')->get();
-        $supplierActivityLogs = ProductActivityLog::whereIn('entity_type', ['supplier', 'stock_purchase'])->latest()->take(50)->get();
+        // 2. Cache report modal HTML (eliminates 7 heavy queries on normal page views)
+        $reportModalHtml = Cache::remember('suppliers.report_modal_html_v2', 120, function () use ($supplierStats) {
+            $allSuppliersReport = Supplier::with([
+                'stockPurchases' => function ($q) {
+                    $q->with(['items.product.sizes', 'items.product.category'])->latest('purchase_date');
+                },
+            ])->orderBy('company_name')->get();
 
-        // Suppliers list with associated stock purchases and items for the detail popups
+            $supplierActivityLogs = ProductActivityLog::whereIn('entity_type', ['supplier', 'stock_purchase'])
+                ->latest()
+                ->take(50)
+                ->get();
+
+            return view('partials.supplier-report-modal', compact('allSuppliersReport', 'supplierStats', 'supplierActivityLogs'))->render();
+        });
+
+        // 3. Fast cached form data for drawer
+        $drawerData = $this->drawerFormData();
+
+        // 4. Fast Paginated suppliers list for the main table (only 15 records)
         $query = Supplier::query()->with([
             'stockPurchases' => function ($q) {
-                $q->with('items.product')->latest();
+                $q->with('items')->latest();
             }
         ]);
+
+        $perPage = 15;
+        $page = max(1, (int) $request->input('page', 1));
 
         if ($search = $request->input('search')) {
             $query->where('company_name', 'like', "%{$search}%")
                   ->orWhere('supplier_id', 'like', "%{$search}%")
                   ->orWhere('contact_person', 'like', "%{$search}%");
+
+            $suppliers = $query->latest()->paginate($perPage)->withQueryString();
+        } else {
+            // Fast paginator: skip duplicate count query by reusing cached total
+            $total = (int) ($supplierStats['total_suppliers'] ?? Supplier::count());
+            $items = $query->latest()->forPage($page, $perPage)->get();
+            $suppliers = new \Illuminate\Pagination\LengthAwarePaginator(
+                $items,
+                $total,
+                $perPage,
+                $page,
+                ['path' => $request->url(), 'query' => $request->query()]
+            );
         }
 
-        $suppliers = $query->latest()->paginate(15)->withQueryString();
-        $drawerData = $this->drawerFormData();
-
-        return view('suppliers', array_merge(compact('suppliers', 'supplierStats', 'allSuppliersReport', 'supplierActivityLogs'), $drawerData));
+        return view('suppliers', array_merge(compact('suppliers', 'supplierStats', 'reportModalHtml'), $drawerData));
     }
 
     /**
@@ -60,12 +92,17 @@ class SupplierController extends Controller
      */
     private function drawerFormData(): array
     {
+        $spCategories = Cache::remember('suppliers.drawer_categories_v1', 300, function () {
+            return Category::where('is_active', true)->orderBy('name')->get(['id', 'name'])->toArray();
+        });
+
+        $spSuppliers = Cache::remember('suppliers.drawer_suppliers_v1', 120, function () {
+            return Supplier::orderBy('company_name')->get(['id', 'company_name', 'supplier_id', 'contact_person', 'phone', 'email', 'address'])->toArray();
+        });
+
         return [
-            'spProducts'       => Product::orderBy('name')->get(),
-            'spCategories'     => Category::where('is_active', true)->orderBy('name')->get(),
-            'spPurchaseUnits'  => StockPurchaseController::PURCHASE_UNITS,
-            'spSuppliers'      => Supplier::orderBy('company_name')->get(),
-            'availableSizes'   => ProductSize::AVAILABLE_SIZES,
+            'spCategories' => $spCategories,
+            'spSuppliers'  => $spSuppliers,
         ];
     }
 
@@ -312,6 +349,11 @@ class SupplierController extends Controller
             }
         });
 
+        Cache::forget('suppliers.stats_summary_v2');
+        Cache::forget('suppliers.report_modal_html_v2');
+        Cache::forget('suppliers.drawer_suppliers_v1');
+        Cache::forget('products.stats_summary_v2');
+
         return redirect()->route('suppliers.index')
             ->with('success', 'Supplier and stock purchase recorded successfully. Products and inventory updated!');
     }
@@ -339,6 +381,10 @@ class SupplierController extends Controller
             "Added supplier: {$supplier->company_name} (ID: {$supplier->supplier_id})"
         );
 
+        Cache::forget('suppliers.stats_summary_v2');
+        Cache::forget('suppliers.report_modal_html_v2');
+        Cache::forget('suppliers.drawer_suppliers_v1');
+
         return redirect()->route('suppliers.index')
             ->with('success', 'Supplier created successfully.');
     }
@@ -365,6 +411,10 @@ class SupplierController extends Controller
             $supplier->company_name,
             "Updated contact details for supplier: {$supplier->company_name}"
         );
+
+        Cache::forget('suppliers.stats_summary_v2');
+        Cache::forget('suppliers.report_modal_html_v2');
+        Cache::forget('suppliers.drawer_suppliers_v1');
 
         return redirect()->route('suppliers.index')
             ->with('success', 'Supplier updated successfully.');
@@ -397,6 +447,11 @@ class SupplierController extends Controller
                 "Deleted supplier {$name} ({$code})"
             );
         });
+
+        Cache::forget('suppliers.stats_summary_v2');
+        Cache::forget('suppliers.report_modal_html_v2');
+        Cache::forget('suppliers.drawer_suppliers_v1');
+        Cache::forget('products.stats_summary_v2');
 
         return redirect()->route('suppliers.index')
             ->with('success', 'Supplier deleted successfully.');

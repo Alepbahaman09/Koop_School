@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\OrderStatusHistory;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
@@ -21,9 +22,9 @@ class OrderController extends Controller
                 'orderItems:id,order_id,product_id,size,quantity,unit_price,subtotal',
                 'orderItems.product:id,name',
                 'statusHistory' => function ($q) {
-                    $q->select(['id', 'order_id', 'user_id', 'admin_id', 'status', 'created_at'])
+                    $q->select(['id', 'order_id', 'admin_id', 'status', 'created_at'])
                         ->latest()
-                        ->with(['user:id,name', 'admin:id,name']);
+                        ->with(['admin:id,name']);
                 },
                 // Load terminal payments so we can tell if the order came from the kiosk POS
                 'terminalPayments' => function ($q) {
@@ -76,12 +77,27 @@ class OrderController extends Controller
             });
         }
 
-        $orders = $query->latest()->paginate(20)->withQueryString();
         $stats = $this->orderStats();
         $statuses = Order::STATUSES;
-
-        // Payment method options for the filter dropdown
         $paymentMethods = ['Cash', 'NFC', 'Online'];
+
+        $perPage = 20;
+        $page = max(1, (int) $request->input('page', 1));
+
+        if ($request->search || in_array($request->status, Order::STATUSES, true) || $paymentMethodFilter) {
+            $orders = $query->latest()->paginate($perPage)->withQueryString();
+        } else {
+            // Fast paginator: skip redundant count query by reusing cached total
+            $total = (int) ($stats['total'] ?? 0);
+            $items = $query->latest()->forPage($page, $perPage)->get();
+            $orders = new \Illuminate\Pagination\LengthAwarePaginator(
+                $items,
+                $total,
+                $perPage,
+                $page,
+                ['path' => $request->url(), 'query' => $request->query()]
+            );
+        }
 
         return view('orders', compact('orders', 'stats', 'statuses', 'paymentMethods'));
     }
@@ -111,30 +127,45 @@ class OrderController extends Controller
 
     private function orderStats(): array
     {
-        $totals = (array) Order::query()
-            ->toBase()
-            ->selectRaw(
-                <<<'SQL'
-                COUNT(*) as total,
-                COUNT(CASE WHEN status IN (?, ?) THEN 1 END) as in_progress,
-                COUNT(CASE WHEN status = ? THEN 1 END) as completed,
-                COUNT(CASE WHEN status = ? THEN 1 END) as cancelled
-                SQL,
-                [
-                    Order::STATUS_PROCESSING,
-                    Order::STATUS_READY,
-                    Order::STATUS_COMPLETED,
-                    Order::STATUS_CANCELLED,
-                ]
-            )
-            ->first();
+        return Cache::remember('orders.stats.v2', 120, function () {
+            $totals = (array) Order::query()
+                ->toBase()
+                ->selectRaw(
+                    <<<'SQL'
+                    COUNT(*) as total,
+                    COUNT(CASE WHEN status IN (?, ?) THEN 1 END) as in_progress,
+                    COUNT(CASE WHEN status = ? THEN 1 END) as completed,
+                    COUNT(CASE WHEN status = ? THEN 1 END) as cancelled
+                    SQL,
+                    [
+                        Order::STATUS_PROCESSING,
+                        Order::STATUS_READY,
+                        Order::STATUS_COMPLETED,
+                        Order::STATUS_CANCELLED,
+                    ]
+                )
+                ->first();
 
-        return [
-            'total' => (int) $totals['total'],
-            'in_progress' => (int) $totals['in_progress'],
-            'completed' => (int) $totals['completed'],
-            'cancelled' => (int) $totals['cancelled'],
-        ];
+            return [
+                'total' => (int) $totals['total'],
+                'in_progress' => (int) $totals['in_progress'],
+                'completed' => (int) $totals['completed'],
+                'cancelled' => (int) $totals['cancelled'],
+            ];
+        });
+    }
+
+    private function clearOrderCaches(): void
+    {
+        Cache::forget('orders.stats.v2');
+        Cache::forget('dashboard.order_totals.v4');
+        Cache::forget('dashboard.order_totals.v3');
+        Cache::forget('dashboard.latest_orders.v1');
+        Cache::forget('dashboard.available_years_v1');
+        foreach ([7, 30, 90, 365, 0] as $d) {
+            Cache::forget("financial.report_data.{$d}.0");
+            Cache::forget("financial.report_data.{$d}.1");
+        }
     }
 
     public function updateStatus(Request $request, Order $order)
@@ -160,6 +191,8 @@ class OrderController extends Controller
                 ]);
             });
             $order->refresh();
+
+            $this->clearOrderCaches();
 
             $message = $history
                 ? 'Order status updated to '.$order->status.'.'
@@ -200,6 +233,8 @@ class OrderController extends Controller
         }
 
         $order->delete();
+
+        $this->clearOrderCaches();
 
         return redirect()->route('orders.index')->with('success', 'Order deleted successfully');
     }

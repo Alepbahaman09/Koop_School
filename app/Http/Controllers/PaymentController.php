@@ -237,26 +237,18 @@ class PaymentController extends Controller
 
     private function bustSalesCaches(): void
     {
-        // Dashboard
-        Cache::forget('dashboard.order_totals.current_statuses');
-        Cache::forget('dashboard.recent_payments');
-        Cache::forget('dashboard.customer_totals');
-        Cache::forget('dashboard.product_totals');
+        // Dashboard & Orders
+        Cache::forget('orders.stats.v2');
+        Cache::forget('dashboard.order_totals.v4');
+        Cache::forget('dashboard.order_totals.v3');
+        Cache::forget('dashboard.available_years_v1');
+        Cache::forget('dashboard.sales_monthly.' . now()->year);
+        Cache::forget('dashboard.sales_daily.' . now()->format('Y-m'));
 
-        // Analytics (all period variants)
-        foreach ([7, 30, 90, 365] as $days) {
-            Cache::forget("analytics.index.top_items.{$days}");
-        }
-
-        // Finance (current + previous month)
-        Cache::forget('finance.index.'.now()->format('Y-m'));
-        Cache::forget('finance.index.'.now()->subMonthNoOverflow()->format('Y-m'));
-
-        // Dashboard sales-by-date (bust any recent range keys)
-        $today = now()->toDateString();
-        for ($i = 0; $i <= 30; $i++) {
-            $rangeStart = now()->subDays($i + 9)->toDateString();
-            Cache::forget("dashboard.sales_by_date.{$rangeStart}.{$today}");
+        // Financial reports
+        foreach ([7, 30, 90, 365, 0] as $days) {
+            Cache::forget("financial.report_data.{$days}.0");
+            Cache::forget("financial.report_data.{$days}.1");
         }
     }
 }

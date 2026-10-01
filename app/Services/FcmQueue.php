@@ -15,6 +15,15 @@ class FcmQueue
             return;
         }
 
+        $hasPending = DB::table('fcm_notification_queue')
+            ->whereNull('sent_at')
+            ->where('attempts', '<', 5)
+            ->exists();
+
+        if (! $hasPending) {
+            return;
+        }
+
         $notificationIds = DB::transaction(function () use ($limit) {
             return DB::table('fcm_notification_queue')
                 ->whereNull('sent_at')

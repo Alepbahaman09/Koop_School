@@ -1,0 +1,16 @@
+c:\Koop_School\Publish\KoopSchoolDesktop.exe
+c:\Koop_School\Publish\app.ico
+c:\Koop_School\Publish\appsettings.json
+c:\Koop_School\Publish\KoopSchoolDesktop.dll
+c:\Koop_School\Publish\KoopSchoolDesktop.deps.json
+c:\Koop_School\Publish\KoopSchoolDesktop.runtimeconfig.json
+c:\Koop_School\Publish\KoopSchoolDesktop.pdb
+c:\Koop_School\Publish\BCrypt-Net-Next.dll
+c:\Koop_School\Publish\Microsoft.Data.Sqlite.dll
+c:\Koop_School\Publish\Microsoft.Extensions.DependencyInjection.Abstractions.dll
+c:\Koop_School\Publish\Microsoft.Extensions.Logging.Abstractions.dll
+c:\Koop_School\Publish\Npgsql.dll
+c:\Koop_School\Publish\SQLitePCLRaw.batteries_v2.dll
+c:\Koop_School\Publish\SQLitePCLRaw.core.dll
+c:\Koop_School\Publish\SQLitePCLRaw.provider.e_sqlite3.dll
+c:\Koop_School\Publish\e_sqlite3.dll

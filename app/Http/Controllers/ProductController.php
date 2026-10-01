@@ -10,6 +10,7 @@ use App\Models\ProductSize;
 use App\Models\Supplier;
 use App\Services\SupabaseStorage;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -66,20 +67,66 @@ class ProductController extends Controller
             };
         }
 
-        $products = $query->latest()->paginate(20)->withQueryString();
+        // 4 top stats: Total Products, Low Stock, Out of Stock, Hidden Products (cached as pure primitive array)
+        $stats = Cache::remember('products.stats_summary_v2', 120, function () {
+            $productStats = (array) Product::query()
+                ->toBase()
+                ->selectRaw(
+                    <<<'SQL'
+                    COUNT(*) as total,
+                    COUNT(CASE WHEN stock_quantity > 0 AND stock_quantity <= min_stock_level THEN 1 END) as low,
+                    COUNT(CASE WHEN stock_quantity = 0 THEN 1 END) as out,
+                    COUNT(CASE WHEN is_active = false THEN 1 END) as hidden,
+                    COALESCE(SUM(price * stock_quantity), 0) as inventory_value,
+                    COALESCE(SUM(stock_quantity), 0) as total_units
+                    SQL
+                )
+                ->first();
 
-        // Active categories for adding/editing products
-        $categories = Category::where('is_active', true)
-            ->orderBy('name')
-            ->get(['id', 'name']);
+            return [
+                'total' => (int) ($productStats['total'] ?? 0),
+                'low' => (int) ($productStats['low'] ?? 0),
+                'out' => (int) ($productStats['out'] ?? 0),
+                'hidden' => (int) ($productStats['hidden'] ?? 0),
+                'inventory_value' => (float) ($productStats['inventory_value'] ?? 0),
+                'total_units' => (int) ($productStats['total_units'] ?? 0),
+            ];
+        });
+
+        // Fast paginated products: reuse total if no filters
+        $perPage = 20;
+        $page = max(1, (int) $request->input('page', 1));
+        $hasFilters = $request->filled('search') || $request->filled('category') || $request->filled('supplier') || $request->filled('stock');
+
+        if ($hasFilters) {
+            $products = $query->latest()->paginate($perPage)->withQueryString();
+        } else {
+            $total = (int) ($stats['total'] ?? Product::count());
+            $items = $query->latest()->forPage($page, $perPage)->get();
+            $products = new \Illuminate\Pagination\LengthAwarePaginator(
+                $items,
+                $total,
+                $perPage,
+                $page,
+                ['path' => $request->url(), 'query' => $request->query()]
+            );
+        }
+
+        // Active categories for adding/editing products (cached array)
+        $categoriesData = Cache::remember('products.active_categories_v2', 180, function () {
+            return Category::where('is_active', true)->orderBy('name')->get(['id', 'name'])->toArray();
+        });
+        $categories = collect($categoriesData)->map(fn ($c) => (object) $c);
 
         // All categories with their product counts for the category manager & filter
-        $allCategories = Category::query()
-            ->withCount('products')
-            ->orderBy('name')
-            ->get();
+        $allCategoriesData = Cache::remember('products.all_categories_v2', 180, function () {
+            return Category::query()->withCount('products')->orderBy('name')->get()->toArray();
+        });
+        $allCategories = collect($allCategoriesData)->map(fn ($c) => (object) $c);
 
-        $uncategorizedCount = Product::whereNull('category_id')->count();
+        $uncategorizedCount = Cache::remember('products.uncategorized_count_v2', 180, function () {
+            return (int) Product::whereNull('category_id')->count();
+        });
 
         $categoryStats = [
             'total' => $allCategories->count(),
@@ -89,40 +136,23 @@ class ProductController extends Controller
             'uncategorized' => $uncategorizedCount,
         ];
 
-        // 4 top stats: Total Products, Low Stock, Out of Stock, Hidden Products
-        $productStats = (array) Product::query()
-            ->toBase()
-            ->selectRaw(
-                <<<'SQL'
-                COUNT(*) as total,
-                COUNT(CASE WHEN stock_quantity > 0 AND stock_quantity <= min_stock_level THEN 1 END) as low,
-                COUNT(CASE WHEN stock_quantity = 0 THEN 1 END) as out,
-                COUNT(CASE WHEN is_active = false THEN 1 END) as hidden,
-                COALESCE(SUM(price * stock_quantity), 0) as inventory_value,
-                COALESCE(SUM(stock_quantity), 0) as total_units
-                SQL
-            )
-            ->first();
-
-        $stats = [
-            'total' => (int) ($productStats['total'] ?? 0),
-            'low' => (int) ($productStats['low'] ?? 0),
-            'out' => (int) ($productStats['out'] ?? 0),
-            'hidden' => (int) ($productStats['hidden'] ?? 0),
-            'inventory_value' => (float) ($productStats['inventory_value'] ?? 0),
-            'total_units' => (int) ($productStats['total_units'] ?? 0),
-        ];
-
         $availableSizes = ProductSize::AVAILABLE_SIZES;
-        $suppliers = Supplier::orderBy('company_name')->get(['id', 'company_name']);
 
-        // Recent activity audit logs for the report trace modal
-        $activityLogs = ProductActivityLog::latest()->take(60)->get();
+        // Suppliers dropdown (cached array)
+        $suppliersData = Cache::remember('products.suppliers_list_v2', 180, function () {
+            return Supplier::orderBy('company_name')->get(['id', 'company_name'])->toArray();
+        });
+        $suppliers = collect($suppliersData)->map(fn ($s) => (object) $s);
 
-        // Full products list for the printable/exportable report table
-        $reportProducts = Product::with(['category:id,name', 'supplier:id,company_name'])
-            ->orderBy('name')
-            ->get();
+        // Cached rendered report modal HTML (eliminates 2 heavy queries and thousands of records on normal views)
+        $reportModalHtml = Cache::remember('products.report_modal_html_v2', 120, function () use ($stats, $categoryStats, $uncategorizedCount) {
+            $activityLogs = ProductActivityLog::latest()->take(60)->get();
+            $reportProducts = Product::with(['category:id,name', 'supplier:id,company_name'])
+                ->orderBy('name')
+                ->get();
+
+            return view('partials.product-report-modal', compact('activityLogs', 'reportProducts', 'stats', 'categoryStats', 'uncategorizedCount'))->render();
+        });
 
         return view('products', compact(
             'products',
@@ -133,8 +163,7 @@ class ProductController extends Controller
             'availableSizes',
             'suppliers',
             'uncategorizedCount',
-            'activityLogs',
-            'reportProducts'
+            'reportModalHtml'
         ));
     }
 
@@ -182,7 +211,28 @@ class ProductController extends Controller
             );
         });
 
+        $this->clearProductCaches();
+
         return redirect()->route('products.index')->with('success', 'Product created successfully.');
+    }
+
+    private function clearProductCaches(): void
+    {
+        Cache::forget('products.stats_summary_v2');
+        Cache::forget('products.report_modal_html_v2');
+        Cache::forget('products.active_categories_v2');
+        Cache::forget('products.all_categories_v2');
+        Cache::forget('products.uncategorized_count_v2');
+        Cache::forget('products.suppliers_list_v2');
+        Cache::forget('dashboard.product_totals.v4');
+        Cache::forget('dashboard.product_totals.v3');
+        Cache::forget('suppliers.stats_summary_v2');
+        Cache::forget('suppliers.report_modal_html_v2');
+        Cache::forget('payment.active_products_v2');
+        foreach ([7, 30, 90, 365, 0] as $d) {
+            Cache::forget("financial.report_data.{$d}.0");
+            Cache::forget("financial.report_data.{$d}.1");
+        }
     }
 
     public function edit(Product $product)
@@ -251,6 +301,8 @@ class ProductController extends Controller
             $this->deleteImage($oldImage);
         }
 
+        $this->clearProductCaches();
+
         return redirect()->route('products.index')->with('success', 'Product updated successfully.');
     }
 
@@ -290,6 +342,8 @@ class ProductController extends Controller
             $productName,
             "Permanently deleted product '{$productName}' (SKU: {$sku})"
         );
+
+        $this->clearProductCaches();
 
         return to_route('products.index')->with('success', 'Product deleted successfully.');
     }

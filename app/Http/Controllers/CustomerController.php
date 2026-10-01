@@ -29,7 +29,6 @@ class CustomerController extends Controller
             ->with(['orders' => fn ($query) => $query
                 ->select(['id', 'user_id', 'student_id', 'order_number', 'status', 'payment_status', 'total_amount', 'created_at'])
                 ->latest()
-                ->limit(8)
                 ->with(['student:id,name,class', 'terminalPayments:id,order_id,payment_method'])])
             ->withCount('orders')
             ->withSum(['orders as total_spent' => function ($query) {
@@ -54,22 +53,30 @@ class CustomerController extends Controller
                 : $query->whereNull('email_verified_at');
         }
 
-        $users = $query->latest()->paginate(20)->withQueryString();
-        $userStats = Cache::remember('users.stats', 30, fn () => (array) User::query()
-            ->toBase()
-            // Exclude the POS walk-in account from stats
-            ->where('email', '!=', 'pos@koop.school')
-            ->selectRaw(
-                <<<'SQL'
-                COUNT(*) as total,
-                COUNT(CASE WHEN email_verified_at IS NOT NULL THEN 1 END) as verified,
-                COUNT(CASE WHEN email_verified_at IS NULL THEN 1 END) as unverified,
-                COUNT(CASE WHEN EXISTS (
-                    SELECT 1 FROM orders WHERE orders.user_id = users.id
-                ) THEN 1 END) as with_orders
-                SQL
-            )
-            ->first());
+        $userStats = Cache::remember('users.stats.v2', 120, function () {
+            $row = User::query()
+                ->toBase()
+                // Exclude the POS walk-in account from stats
+                ->where('email', '!=', 'pos@koop.school')
+                ->selectRaw(
+                    <<<'SQL'
+                    COUNT(*) as total,
+                    COUNT(CASE WHEN email_verified_at IS NOT NULL THEN 1 END) as verified,
+                    COUNT(CASE WHEN email_verified_at IS NULL THEN 1 END) as unverified,
+                    COUNT(CASE WHEN EXISTS (
+                        SELECT 1 FROM orders WHERE orders.user_id = users.id
+                    ) THEN 1 END) as with_orders
+                    SQL
+                )
+                ->first();
+
+            return [
+                'total' => (int) ($row->total ?? 0),
+                'verified' => (int) ($row->verified ?? 0),
+                'unverified' => (int) ($row->unverified ?? 0),
+                'with_orders' => (int) ($row->with_orders ?? 0),
+            ];
+        });
 
         $stats = [
             'total' => (int) $userStats['total'],
@@ -77,6 +84,24 @@ class CustomerController extends Controller
             'unverified' => (int) $userStats['unverified'],
             'with_orders' => (int) $userStats['with_orders'],
         ];
+
+        $perPage = 20;
+        $page = max(1, (int) $request->input('page', 1));
+
+        if ($request->search || $request->filled('status')) {
+            $users = $query->latest()->paginate($perPage)->withQueryString();
+        } else {
+            // Fast paginator: skip duplicate count query by reusing cached total
+            $total = (int) ($stats['total'] ?? 0);
+            $items = $query->latest()->forPage($page, $perPage)->get();
+            $users = new \Illuminate\Pagination\LengthAwarePaginator(
+                $items,
+                $total,
+                $perPage,
+                $page,
+                ['path' => $request->url(), 'query' => $request->query()]
+            );
+        }
 
         return view('users', compact('users', 'stats'));
     }

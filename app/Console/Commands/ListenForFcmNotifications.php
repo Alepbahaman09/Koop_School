@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Services\FcmQueue;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 use Throwable;
 
 class ListenForFcmNotifications extends Command
@@ -28,6 +29,17 @@ class ListenForFcmNotifications extends Command
             try {
                 $queue->processPending();
             } catch (Throwable $error) {
+                try {
+                    while (DB::transactionLevel() > 0) {
+                        DB::rollBack();
+                    }
+                } catch (Throwable) {
+                    // Ignore rollback failures
+                }
+
+                // Disconnect to flush any poisoned PDO transaction state
+                DB::disconnect();
+
                 report($error);
                 $this->error($error->getMessage());
             }

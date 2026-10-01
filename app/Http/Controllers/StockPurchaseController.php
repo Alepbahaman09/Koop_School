@@ -9,6 +9,7 @@ use App\Models\StockPurchase;
 use App\Models\StockPurchaseItem;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -102,6 +103,8 @@ class StockPurchaseController extends Controller
             }
         });
 
+        $this->clearStockPurchaseCaches();
+
         return redirect()->route('suppliers.index', ['tab' => 'purchases'])
             ->with('success', 'Stock purchase recorded as pending. Mark as Received in the table to update inventory.');
     }
@@ -156,8 +159,24 @@ class StockPurchaseController extends Controller
             $stockPurchase->update(['status' => 'received']);
         });
 
+        $this->clearStockPurchaseCaches();
+
         return redirect()->route('stock-purchases.index')
             ->with('success', 'Stock purchase marked as received and inventory updated.');
+    }
+
+    private function clearStockPurchaseCaches(): void
+    {
+        Cache::forget('suppliers.stats_summary_v2');
+        Cache::forget('suppliers.report_modal_html_v2');
+        Cache::forget('products.stats_summary_v2');
+        Cache::forget('products.report_modal_html_v2');
+        Cache::forget('dashboard.product_totals.v4');
+        Cache::forget('dashboard.product_totals.v3');
+        foreach ([7, 30, 90, 365, 0] as $days) {
+            Cache::forget("financial.report_data.{$days}.0");
+            Cache::forget("financial.report_data.{$days}.1");
+        }
     }
 
     /**

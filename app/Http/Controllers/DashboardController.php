@@ -20,35 +20,49 @@ class DashboardController extends Controller
         $lastMonthEnd = now()->subMonth()->endOfMonth();
 
         // 1. Order and Revenue Statistics
-        $orderTotals = Cache::remember('dashboard.order_totals.v3', 30, fn () => (array) Order::query()
-            ->toBase()
-            ->selectRaw(
-                <<<'SQL'
-                COALESCE(SUM(CASE WHEN payment_status = 'Paid' THEN total_amount ELSE 0 END), 0) as total_revenue,
-                COALESCE(SUM(CASE WHEN payment_status = 'Paid' AND created_at BETWEEN ? AND ? THEN total_amount ELSE 0 END), 0) as this_month_revenue,
-                COALESCE(SUM(CASE WHEN payment_status = 'Paid' AND created_at BETWEEN ? AND ? THEN total_amount ELSE 0 END), 0) as last_month_revenue,
-                COUNT(*) as total_orders,
-                COUNT(CASE WHEN created_at BETWEEN ? AND ? THEN 1 END) as this_month_orders,
-                COUNT(CASE WHEN created_at BETWEEN ? AND ? THEN 1 END) as last_month_orders,
-                COUNT(CASE WHEN status IN (?, ?) THEN 1 END) as pending_orders,
-                COUNT(CASE WHEN status = ? THEN 1 END) as cancelled_orders,
-                COUNT(CASE WHEN payment_status = 'Refunded' THEN 1 END) as refunded_purchases
-                SQL,
-                [
-                    $thisMonthStart,
-                    $thisMonthEnd,
-                    $lastMonthStart,
-                    $lastMonthEnd,
-                    $thisMonthStart,
-                    $thisMonthEnd,
-                    $lastMonthStart,
-                    $lastMonthEnd,
-                    Order::STATUS_PROCESSING,
-                    'Pending',
-                    Order::STATUS_CANCELLED,
-                ]
-            )
-            ->first());
+        $orderTotals = Cache::remember('dashboard.order_totals.v4', 120, function () use ($thisMonthStart, $thisMonthEnd, $lastMonthStart, $lastMonthEnd) {
+            $row = Order::query()
+                ->toBase()
+                ->selectRaw(
+                    <<<'SQL'
+                    COALESCE(SUM(CASE WHEN payment_status = 'Paid' THEN total_amount ELSE 0 END), 0) as total_revenue,
+                    COALESCE(SUM(CASE WHEN payment_status = 'Paid' AND created_at BETWEEN ? AND ? THEN total_amount ELSE 0 END), 0) as this_month_revenue,
+                    COALESCE(SUM(CASE WHEN payment_status = 'Paid' AND created_at BETWEEN ? AND ? THEN total_amount ELSE 0 END), 0) as last_month_revenue,
+                    COUNT(*) as total_orders,
+                    COUNT(CASE WHEN created_at BETWEEN ? AND ? THEN 1 END) as this_month_orders,
+                    COUNT(CASE WHEN created_at BETWEEN ? AND ? THEN 1 END) as last_month_orders,
+                    COUNT(CASE WHEN status IN (?, ?) THEN 1 END) as pending_orders,
+                    COUNT(CASE WHEN status = ? THEN 1 END) as cancelled_orders,
+                    COUNT(CASE WHEN payment_status = 'Refunded' THEN 1 END) as refunded_purchases
+                    SQL,
+                    [
+                        $thisMonthStart,
+                        $thisMonthEnd,
+                        $lastMonthStart,
+                        $lastMonthEnd,
+                        $thisMonthStart,
+                        $thisMonthEnd,
+                        $lastMonthStart,
+                        $lastMonthEnd,
+                        Order::STATUS_PROCESSING,
+                        'Pending',
+                        Order::STATUS_CANCELLED,
+                    ]
+                )
+                ->first();
+
+            return [
+                'total_revenue' => (float) ($row->total_revenue ?? 0),
+                'this_month_revenue' => (float) ($row->this_month_revenue ?? 0),
+                'last_month_revenue' => (float) ($row->last_month_revenue ?? 0),
+                'total_orders' => (int) ($row->total_orders ?? 0),
+                'this_month_orders' => (int) ($row->this_month_orders ?? 0),
+                'last_month_orders' => (int) ($row->last_month_orders ?? 0),
+                'pending_orders' => (int) ($row->pending_orders ?? 0),
+                'cancelled_orders' => (int) ($row->cancelled_orders ?? 0),
+                'refunded_purchases' => (int) ($row->refunded_purchases ?? 0),
+            ];
+        });
 
         $totalRevenue = (float) ($orderTotals['total_revenue'] ?? 0);
         $thisMonthRevenue = (float) ($orderTotals['this_month_revenue'] ?? 0);
@@ -65,16 +79,24 @@ class DashboardController extends Controller
         $refundedPurchases = (int) ($orderTotals['refunded_purchases'] ?? 0);
 
         // 2. Product Statistics
-        $productTotals = Cache::remember('dashboard.product_totals.v3', 30, fn () => (array) Product::query()
-            ->toBase()
-            ->selectRaw(
-                <<<'SQL'
-                COUNT(*) as total_products,
-                COUNT(CASE WHEN stock_quantity > 0 AND stock_quantity <= min_stock_level THEN 1 END) as low_stock_products,
-                COUNT(CASE WHEN stock_quantity <= 0 THEN 1 END) as out_of_stock_products
-                SQL
-            )
-            ->first());
+        $productTotals = Cache::remember('dashboard.product_totals.v4', 120, function () {
+            $row = Product::query()
+                ->toBase()
+                ->selectRaw(
+                    <<<'SQL'
+                    COUNT(*) as total_products,
+                    COUNT(CASE WHEN stock_quantity > 0 AND stock_quantity <= min_stock_level THEN 1 END) as low_stock_products,
+                    COUNT(CASE WHEN stock_quantity <= 0 THEN 1 END) as out_of_stock_products
+                    SQL
+                )
+                ->first();
+
+            return [
+                'total_products' => (int) ($row->total_products ?? 0),
+                'low_stock_products' => (int) ($row->low_stock_products ?? 0),
+                'out_of_stock_products' => (int) ($row->out_of_stock_products ?? 0),
+            ];
+        });
 
         $totalProducts = (int) ($productTotals['total_products'] ?? 0);
         $lowStockProducts = (int) ($productTotals['low_stock_products'] ?? 0);
@@ -196,7 +218,7 @@ class DashboardController extends Controller
             $selectedYear = (int) $monthDate->year;
 
             $salesCacheKey = "dashboard.sales_daily.{$selectedMonth}";
-            $salesByDate = Cache::remember($salesCacheKey, 30, function () use ($salesStart, $salesEnd, $timezone) {
+            $salesByDate = Cache::remember($salesCacheKey, 120, function () use ($salesStart, $salesEnd, $timezone) {
                 return Order::query()
                     ->where('payment_status', 'Paid')
                     ->whereBetween('created_at', [$salesStart->copy()->utc(), $salesEnd->copy()->utc()])
@@ -220,7 +242,7 @@ class DashboardController extends Controller
             $salesEnd = $yearEnd;
 
             $salesCacheKey = "dashboard.sales_monthly.{$selectedYear}";
-            $monthlySalesRaw = Cache::remember($salesCacheKey, 30, function () use ($yearStart, $yearEnd, $timezone) {
+            $monthlySalesRaw = Cache::remember($salesCacheKey, 120, function () use ($yearStart, $yearEnd, $timezone) {
                 return Order::query()
                     ->where('payment_status', 'Paid')
                     ->whereBetween('created_at', [$yearStart->copy()->utc(), $yearEnd->copy()->utc()])
@@ -241,54 +263,58 @@ class DashboardController extends Controller
 
         $salesIncome = array_sum($salesBars);
 
-        // Available years for dropdown
-        $availableYears = Order::query()
-            ->where('payment_status', 'Paid')
-            ->selectRaw("EXTRACT(YEAR FROM created_at) as yr")
-            ->distinct()
-            ->pluck('yr')
-            ->map(fn ($y) => (int) $y)
-            ->push((int) now()->year)
-            ->unique()
-            ->sortDesc()
-            ->values()
-            ->all();
+        // Available years for dropdown (cached 300s)
+        $availableYears = Cache::remember('dashboard.available_years_v1', 300, function () {
+            return Order::query()
+                ->where('payment_status', 'Paid')
+                ->selectRaw("EXTRACT(YEAR FROM created_at) as yr")
+                ->distinct()
+                ->pluck('yr')
+                ->map(fn ($y) => (int) $y)
+                ->push((int) now()->year)
+                ->unique()
+                ->sortDesc()
+                ->values()
+                ->all();
+        });
 
-        // 6. Latest Orders
-        $orders = Order::query()
-            ->select(['id', 'order_number', 'customer_id', 'user_id', 'status', 'total_amount', 'created_at'])
-            ->with([
-                'customer:id,parent_name,student_name',
-                'user:id,name,username',
-                'orderItems:id,order_id,product_id,size,quantity',
-                'orderItems.product:id,name',
-            ])
-            ->latest()
-            ->take(5)
-            ->get()
-            ->map(function ($order) {
-                $itemNames = $order->orderItems->map(function ($item) {
-                    return $item->product?->name ?? 'Item';
-                })->take(2)->join(', ');
+        // 6. Latest Orders (cached primitive array)
+        $orders = Cache::remember('dashboard.latest_orders.v1', 60, function () {
+            return Order::query()
+                ->select(['id', 'order_number', 'customer_id', 'user_id', 'status', 'total_amount', 'created_at'])
+                ->with([
+                    'customer:id,parent_name,student_name',
+                    'user:id,name,username',
+                    'orderItems:id,order_id,product_id,size,quantity',
+                    'orderItems.product:id,name',
+                ])
+                ->latest()
+                ->take(5)
+                ->get()
+                ->map(function ($order) {
+                    $itemNames = $order->orderItems->map(function ($item) {
+                        return $item->product?->name ?? 'Item';
+                    })->take(2)->join(', ');
 
-                $itemCount = $order->orderItems->count();
-                if ($itemCount > 2) {
-                    $itemNames .= ' +'.($itemCount - 2).' more';
-                }
+                    $itemCount = $order->orderItems->count();
+                    if ($itemCount > 2) {
+                        $itemNames .= ' +'.($itemCount - 2).' more';
+                    }
 
-                $customerName = $order->customer?->parent_name
-                    ?? $order->user?->name
-                    ?? $order->user?->username
-                    ?? (str_starts_with($order->order_number, 'POS-') ? ('Kiosk-' . $order->id) : 'Walk-in');
+                    $customerName = $order->customer?->parent_name
+                        ?? $order->user?->name
+                        ?? $order->user?->username
+                        ?? (str_starts_with($order->order_number, 'POS-') ? ('Kiosk-' . $order->id) : 'Walk-in');
 
-                return [
-                    'id' => str_starts_with($order->order_number, 'POS-') ? ('Kiosk-' . $order->id) : $order->order_number,
-                    'customer' => $customerName,
-                    'item' => $itemNames ?: 'No items',
-                    'status' => $order->status,
-                    'amount' => 'RM '.number_format($order->total_amount, 2),
-                ];
-            });
+                    return [
+                        'id' => str_starts_with($order->order_number, 'POS-') ? ('Kiosk-' . $order->id) : $order->order_number,
+                        'customer' => $customerName,
+                        'item' => $itemNames ?: 'No items',
+                        'status' => $order->status,
+                        'amount' => 'RM '.number_format($order->total_amount, 2),
+                    ];
+                })->all();
+        });
 
         $dashboardData = [
             'total_revenue' => $totalRevenue,

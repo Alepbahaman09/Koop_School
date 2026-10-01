@@ -263,7 +263,7 @@
             </td>
             <td>
                 <span class="info-title">Registered Date</span>
-                <span class="info-data">{{ $selectedSupplier->created_at->format('d M Y') }}</span>
+                <span class="info-data">{{ $selectedSupplier->created_at?->format('d M Y') ?? '—' }}</span>
             </td>
         </tr>
     </table>
@@ -289,7 +289,7 @@
                     @php $itemCount++; @endphp
                     <tr>
                         <td>
-                            <strong>{{ $purchase->purchase_date->format('d/m/Y') }}</strong>
+                            <strong>{{ $purchase->purchase_date?->format('d/m/Y') ?? ($purchase->created_at?->format('d/m/Y') ?? '—') }}</strong>
                             <div style="color: #64748b; font-size: 7.5px;">PO #{{ $purchase->id }}</div>
                         </td>
                         <td>
@@ -311,7 +311,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td><strong>{{ $purchase->purchase_date->format('d/m/Y') }}</strong></td>
+                        <td><strong>{{ $purchase->purchase_date?->format('d/m/Y') ?? ($purchase->created_at?->format('d/m/Y') ?? '—') }}</strong></td>
                         <td colspan="5" style="color: #64748b;">Purchase recorded without individual items: {{ $purchase->notes ?: '—' }}</td>
                         <td class="text-right font-bold">{{ number_format($purchase->total_amount, 2) }}</td>
                     </tr>

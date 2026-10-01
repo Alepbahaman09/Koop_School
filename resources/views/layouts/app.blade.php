@@ -1,13 +1,19 @@
 @php
-    $notificationState = \App\Models\AdminNotification::query()
-        ->toBase()
-        ->selectRaw('COUNT(CASE WHEN read_at IS NULL THEN 1 END) as unread, COALESCE(MAX(id), 0) as latest_id')
-        ->first();
-    $unreadNotifications = (int) $notificationState->unread;
-    $latestNotificationId = (int) $notificationState->latest_id;
+    $notificationState = \Illuminate\Support\Facades\Cache::remember('admin_notifications_state_v2', 120, function () {
+        $row = \App\Models\AdminNotification::query()
+            ->toBase()
+            ->selectRaw('COUNT(CASE WHEN read_at IS NULL THEN 1 END) as unread, COALESCE(MAX(id), 0) as latest_id')
+            ->first();
+
+        return [
+            'unread' => (int) ($row->unread ?? 0),
+            'latest_id' => (int) ($row->latest_id ?? 0),
+        ];
+    });
+    $unreadNotifications = (int) (is_array($notificationState) ? ($notificationState['unread'] ?? 0) : ($notificationState->unread ?? 0));
+    $latestNotificationId = (int) (is_array($notificationState) ? ($notificationState['latest_id'] ?? 0) : ($notificationState->latest_id ?? 0));
     $navItems = [
         ['label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'M3 13h8V3H3v10Zm10 8h8V3h-8v18ZM3 21h8v-6H3v6Z'],
-        ['label' => 'POS', 'route' => 'payment.index', 'icon' => 'M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3H3V5Zm0 4h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Zm4 4h6M7 16h3'],
         ['label' => 'Orders', 'route' => 'orders.index', 'icon' => 'M6 6h15l-1.5 9h-12L6 6Zm0 0L5 3H2m7 18a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm9 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z'],
         ['label' => 'Products', 'route' => 'products.index', 'icon' => 'M20 7 12 3 4 7l8 4 8-4Zm0 0v10l-8 4m8-14-8 4m0 10-8-4V7m8 14V11'],
         ['label' => 'Announcements', 'route' => 'home-banners.index', 'icon' => 'M4 6h16v12H4zM7 9h5M7 13h10'],
@@ -26,10 +32,10 @@
     ];
 
     $navSections = [
-        'Overview & Sales' => array_slice($navItems, 0, 3),
-        'Catalog' => array_slice($navItems, 3, 2),
+        'Overview & Sales' => array_slice($navItems, 0, 2),
+        'Catalog' => array_slice($navItems, 2, 2),
         'Inventory' => $inventoryItems,
-        'Management' => array_merge(array_slice($navItems, 5), $toolItems),
+        'Management' => array_merge(array_slice($navItems, 4), $toolItems),
     ];
 @endphp
 
@@ -55,6 +61,7 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="h-screen overflow-hidden font-sans antialiased text-slate-900">
+
         @include('partials.admin-alerts')
         <div class="h-screen overflow-hidden bg-[#f4f7fb] lg:flex">
             <aside class="hidden w-64 shrink-0 overflow-hidden border-r border-slate-200 bg-white lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:h-screen lg:flex-col">

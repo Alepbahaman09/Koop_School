@@ -12,6 +12,7 @@ use App\Models\TerminalPayment;
 use App\Models\Supplier;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -24,7 +25,9 @@ class FinancialReportController extends Controller
         $end = now()->endOfDay();
         $start = $days > 0 ? now()->subDays($days - 1)->startOfDay() : now()->subYears(5)->startOfDay();
 
-        $data = $this->reportData($days);
+        $data = Cache::remember("financial.report_data.{$days}.0", 120, function () use ($days) {
+            return $this->reportData($days, false);
+        });
         $data['days'] = $days;
         $data['start'] = $start;
         $data['end'] = $end;
@@ -48,7 +51,10 @@ class FinancialReportController extends Controller
         $end = now()->endOfDay();
         $start = $days > 0 ? now()->subDays($days - 1)->startOfDay() : now()->subYears(5)->startOfDay();
 
-        $data = $this->reportData($days, true);
+        $cacheKey = "financial.report_data.{$days}." . ($withAudit ? '1' : '0');
+        $data = Cache::remember($cacheKey, 120, function () use ($days, $withAudit) {
+            return $this->reportData($days, $withAudit);
+        });
         $data['days'] = $days;
         $data['start'] = $start;
         $data['end'] = $end;
@@ -480,7 +486,7 @@ class FinancialReportController extends Controller
             }
 
             $auditList->push([
-                'timestamp' => $p->paid_at ?? $p->created_at,
+                'timestamp' => (int) ($p->paid_at ?? $p->created_at)->timestamp,
                 'date_str'  => ($p->paid_at ?? $p->created_at)->format('d M Y, h:i A'),
                 'order_id'  => $orderId,
                 'source'    => 'Online Checkout (' . ($p->payment_method ?: 'Online') . ')',
@@ -507,7 +513,7 @@ class FinancialReportController extends Controller
             }
 
             $auditList->push([
-                'timestamp' => $tp->paid_at ?? $tp->created_at,
+                'timestamp' => (int) ($tp->paid_at ?? $tp->created_at)->timestamp,
                 'date_str'  => ($tp->paid_at ?? $tp->created_at)->format('d M Y, h:i A'),
                 'order_id'  => $orderId,
                 'source'    => 'POS Cashier Terminal',
@@ -526,7 +532,7 @@ class FinancialReportController extends Controller
             ->get();
         foreach ($stockPurchasesList as $sp) {
             $auditList->push([
-                'timestamp' => Carbon::parse($sp->purchase_date),
+                'timestamp' => (int) Carbon::parse($sp->purchase_date)->timestamp,
                 'date_str'  => Carbon::parse($sp->purchase_date)->format('d M Y'),
                 'order_id'  => 'PO-' . $sp->id,
                 'source'    => 'Vendor: ' . ($sp->supplier?->company_name ?? 'Supplier'),

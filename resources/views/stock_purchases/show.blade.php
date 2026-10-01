@@ -59,7 +59,7 @@
             <h2 class="text-sm font-extrabold text-slate-900 border-b border-slate-100 pb-2">Purchase Metadata</h2>
             <div>
                 <p class="text-xs font-bold text-slate-400">Purchase Date</p>
-                <p class="text-sm font-semibold text-slate-800">{{ $stockPurchase->purchase_date->format('d M Y') }}</p>
+                <p class="text-sm font-semibold text-slate-800">{{ $stockPurchase->purchase_date?->format('d M Y') ?? ($stockPurchase->created_at?->format('d M Y') ?? '—') }}</p>
             </div>
             <div>
                 <p class="text-xs font-bold text-slate-400">Recorded By</p>
